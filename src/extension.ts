@@ -5,6 +5,8 @@ import { DocusaurusTreeDataProvider } from './treeView';
 import { DocusaurusTreeDragAndDropController } from './dragAndDrop';
 import { GitHandler } from './gitHandler';
 import { NewFileHandler } from './newFileHandler';
+import { DocusaurusCompletionProvider } from './completionProvider';
+import { DocusaurusPreviewProvider } from './previewProvider';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -87,6 +89,13 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	console.log('📄 Creating NewFileHandler');
 	const newFileHandler = new NewFileHandler(docusaurusRoot);
 
+	// Create completion and preview providers
+	console.log('💬 Creating Docusaurus Completion Provider');
+	const completionProvider = new DocusaurusCompletionProvider();
+	
+	console.log('👁️ Creating Docusaurus Preview Provider');
+	const previewProvider = new DocusaurusPreviewProvider(context);
+
 	// Register tree view
 	console.log('🔧 Creating TreeView');
 	treeView = vscode.window.createTreeView('docusaurusExplorer', {
@@ -124,6 +133,78 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		await gitHandler.createPullRequest();
 	});
 
+	// Register Docusaurus-specific providers
+	const markdownCompletionProvider = vscode.languages.registerCompletionItemProvider(
+		{ scheme: 'file', language: 'markdown' },
+		completionProvider,
+		':', '<', '`'
+	);
+
+	const mdxCompletionProvider = vscode.languages.registerCompletionItemProvider(
+		{ scheme: 'file', language: 'mdx' },
+		completionProvider,
+		':', '<', '`'
+	);
+
+	// Register preview provider
+	const previewProviderRegistration = vscode.workspace.registerTextDocumentContentProvider(
+		'docusaurus-preview',
+		previewProvider
+	);
+
+	// Register preview command
+	const previewCommand = vscode.commands.registerCommand('docusaurus-editor.showPreview', async () => {
+		const activeEditor = vscode.window.activeTextEditor;
+		if (!activeEditor) {
+			vscode.window.showErrorMessage('アクティブなエディターがありません');
+			return;
+		}
+
+		const document = activeEditor.document;
+		if (document.languageId !== 'markdown' && document.languageId !== 'mdx') {
+			vscode.window.showErrorMessage('Markdownファイルを開いてください');
+			return;
+		}
+
+		// Create webview panel for preview
+		const panel = vscode.window.createWebviewPanel(
+			'docusaurusPreview',
+			`Preview: ${path.basename(document.fileName)}`,
+			vscode.ViewColumn.Beside,
+			{
+				enableScripts: true,
+				retainContextWhenHidden: true
+			}
+		);
+
+		// Generate and set webview content
+		const content = previewProvider.provideTextDocumentContent(
+			vscode.Uri.parse(`docusaurus-preview://preview?${document.uri.toString()}`)
+		);
+		panel.webview.html = content;
+
+		// Update preview when document changes
+		const changeSubscription = vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
+			if (e.document === document) {
+				const updatedContent = previewProvider.provideTextDocumentContent(
+					vscode.Uri.parse(`docusaurus-preview://preview?${document.uri.toString()}`)
+				);
+				panel.webview.html = updatedContent;
+			}
+		});
+
+		// Clean up when panel is disposed
+		panel.onDidDispose(() => {
+			changeSubscription.dispose();
+		});
+	});
+
+	// Register refresh preview command
+	const refreshPreviewCommand = vscode.commands.registerCommand('docusaurus-editor.refreshPreview', () => {
+		previewProvider.refresh();
+		vscode.window.showInformationMessage('Docusaurus プレビューを更新しました');
+	});
+
 	// Add to subscriptions
 	context.subscriptions.push(
 		treeView,
@@ -131,7 +212,12 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		createNewDocCommand,
 		editDocCommand,
 		gitCommitCommand,
-		createPullRequestCommand
+		createPullRequestCommand,
+		markdownCompletionProvider,
+		mdxCompletionProvider,
+		previewProviderRegistration,
+		previewCommand,
+		refreshPreviewCommand
 	);
 
 	console.log(`Docusaurus Editor initialized for: ${docusaurusRoot}`);

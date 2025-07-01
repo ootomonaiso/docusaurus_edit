@@ -15,6 +15,14 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "mdx",
+        "aliases": ["MDX", "mdx"],
+        "extensions": [".mdx"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -65,6 +73,16 @@
       {
         "command": "docusaurus-editor.enableForFolder",
         "title": "このフォルダーで Docusaurus Editor を有効化"
+      },
+      {
+        "command": "docusaurus-editor.showPreview",
+        "title": "Docusaurus プレビューを表示",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "docusaurus-editor.refreshPreview",
+        "title": "プレビューを更新",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -93,6 +111,25 @@
         {
           "command": "docusaurus-editor.createNewDoc",
           "when": "view == docusaurusExplorer && viewItem == docFolder"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "docusaurus-editor.showPreview",
+          "when": "resourceExtname == .md || resourceExtname == .mdx",
+          "group": "navigation"
+        },
+        {
+          "command": "docusaurus-editor.refreshPreview",
+          "when": "resourceExtname == .md || resourceExtname == .mdx",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "docusaurus-editor.showPreview",
+          "when": "resourceExtname == .md || resourceExtname == .mdx",
+          "group": "docusaurus"
         }
       ]
     }
