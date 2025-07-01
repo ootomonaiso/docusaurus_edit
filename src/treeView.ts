@@ -32,8 +32,14 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
             this.contextValue = 'docFile';
             this.iconPath = new vscode.ThemeIcon('markdown');
         } else {
-            this.contextValue = 'docFolder';
-            this.iconPath = new vscode.ThemeIcon('folder');
+            // Check if folder is a category (has _category_.json)
+            const categoryConfigPath = path.join(docItem.filePath, '_category_.json');
+            const isCategory = fs.existsSync(categoryConfigPath);
+            
+            this.contextValue = isCategory ? 'docCategory' : 'docFolder';
+            this.iconPath = isCategory 
+                ? new vscode.ThemeIcon('folder-library') 
+                : new vscode.ThemeIcon('folder');
         }
     }
 }

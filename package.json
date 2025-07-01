@@ -18,8 +18,13 @@
     "languages": [
       {
         "id": "mdx",
-        "aliases": ["MDX", "mdx"],
-        "extensions": [".mdx"],
+        "aliases": [
+          "MDX",
+          "mdx"
+        ],
+        "extensions": [
+          ".mdx"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -54,7 +59,8 @@
       },
       {
         "command": "docusaurus-editor.editDoc",
-        "title": "ドキュメントを編集"
+        "title": "ドキュメントを編集",
+        "icon": "$(edit)"
       },
       {
         "command": "docusaurus-editor.gitCommit",
@@ -68,11 +74,13 @@
       },
       {
         "command": "docusaurus-editor.setDocusaurusRoot",
-        "title": "Docusaurus ルートを設定"
+        "title": "Docusaurus ルートを設定",
+        "icon": "$(folder)"
       },
       {
         "command": "docusaurus-editor.enableForFolder",
-        "title": "このフォルダーで Docusaurus Editor を有効化"
+        "title": "このフォルダーで Docusaurus Editor を有効化",
+        "icon": "$(check)"
       },
       {
         "command": "docusaurus-editor.showPreview",
@@ -83,6 +91,21 @@
         "command": "docusaurus-editor.refreshPreview",
         "title": "プレビューを更新",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "docusaurus-editor.createCategory",
+        "title": "新しいカテゴリを作成",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "docusaurus-editor.editCategory",
+        "title": "カテゴリ設定を編集",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "docusaurus-editor.deleteCategory",
+        "title": "カテゴリを削除",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
@@ -101,6 +124,11 @@
           "command": "docusaurus-editor.gitCommit",
           "when": "view == docusaurusExplorer",
           "group": "navigation"
+        },
+        {
+          "command": "docusaurus-editor.createCategory",
+          "when": "view == docusaurusExplorer",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -111,6 +139,21 @@
         {
           "command": "docusaurus-editor.createNewDoc",
           "when": "view == docusaurusExplorer && viewItem == docFolder"
+        },
+        {
+          "command": "docusaurus-editor.createCategory",
+          "when": "view == docusaurusExplorer && viewItem == docFolder",
+          "group": "category"
+        },
+        {
+          "command": "docusaurus-editor.editCategory",
+          "when": "view == docusaurusExplorer && viewItem == docCategory",
+          "group": "category"
+        },
+        {
+          "command": "docusaurus-editor.deleteCategory",
+          "when": "view == docusaurusExplorer && viewItem == docCategory",
+          "group": "category"
         }
       ],
       "editor/title": [
@@ -144,7 +187,7 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "20.x",
+    "@types/node": "^20.19.2",
     "@types/vscode": "^1.101.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",

@@ -7,6 +7,7 @@ import { GitHandler } from './gitHandler';
 import { NewFileHandler } from './newFileHandler';
 import { DocusaurusCompletionProvider } from './completionProvider';
 import { DocusaurusPreviewProvider } from './previewProvider';
+import { CategoryHandler } from './categoryHandler';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -89,6 +90,9 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	console.log('📄 Creating NewFileHandler');
 	const newFileHandler = new NewFileHandler(docusaurusRoot);
 
+	console.log('📁 Creating CategoryHandler');
+	const categoryHandler = new CategoryHandler(docusaurusRoot);
+
 	// Create completion and preview providers
 	console.log('💬 Creating Docusaurus Completion Provider');
 	const completionProvider = new DocusaurusCompletionProvider();
@@ -114,12 +118,12 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		}
 	});
 
-	const createNewDocCommand = vscode.commands.registerCommand('docusaurus-editor.createNewDoc', async (item) => {
+	const createNewDocCommand = vscode.commands.registerCommand('docusaurus-editor.createNewDoc', async (item: any) => {
 		const targetFolder = item ? item.filePath : undefined;
 		await newFileHandler.createNewDocument(targetFolder);
 	});
 
-	const editDocCommand = vscode.commands.registerCommand('docusaurus-editor.editDoc', (item) => {
+	const editDocCommand = vscode.commands.registerCommand('docusaurus-editor.editDoc', (item: any) => {
 		if (item && item.filePath) {
 			vscode.commands.executeCommand('vscode.open', vscode.Uri.file(item.filePath));
 		}
@@ -131,6 +135,24 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 
 	const createPullRequestCommand = vscode.commands.registerCommand('docusaurus-editor.createPullRequest', async () => {
 		await gitHandler.createPullRequest();
+	});
+
+	// Register category commands
+	const createCategoryCommand = vscode.commands.registerCommand('docusaurus-editor.createCategory', async (item: any) => {
+		const targetFolder = item ? item.filePath : undefined;
+		await categoryHandler.createNewCategory(targetFolder);
+	});
+
+	const editCategoryCommand = vscode.commands.registerCommand('docusaurus-editor.editCategory', async (item: any) => {
+		if (item && item.filePath) {
+			await categoryHandler.editCategorySettings(item.filePath);
+		}
+	});
+
+	const deleteCategoryCommand = vscode.commands.registerCommand('docusaurus-editor.deleteCategory', async (item: any) => {
+		if (item && item.filePath) {
+			await categoryHandler.deleteCategory(item.filePath);
+		}
 	});
 
 	// Register Docusaurus-specific providers
@@ -213,6 +235,9 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		editDocCommand,
 		gitCommitCommand,
 		createPullRequestCommand,
+		createCategoryCommand,
+		editCategoryCommand,
+		deleteCategoryCommand,
 		markdownCompletionProvider,
 		mdxCompletionProvider,
 		previewProviderRegistration,
