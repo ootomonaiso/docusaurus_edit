@@ -8,6 +8,8 @@ import { NewFileHandler } from './newFileHandler';
 import { DocusaurusCompletionProvider } from './completionProvider';
 import { DocusaurusPreviewProvider } from './previewProvider';
 import { CategoryHandler } from './categoryHandler';
+import { MarkdownTemplateProvider } from './markdownTemplates';
+import { DocusaurusStatsProvider } from './statsProvider';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -94,6 +96,9 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	console.log('📁 Creating CategoryHandler');
 	const categoryHandler = new CategoryHandler(docusaurusRoot, currentContentType);
 
+	console.log('📊 Creating StatsProvider');
+	const statsProvider = new DocusaurusStatsProvider(docusaurusRoot);
+
 	// Create completion and preview providers
 	console.log('💬 Creating Docusaurus Completion Provider');
 	const completionProvider = new DocusaurusCompletionProvider();
@@ -113,6 +118,18 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	treeView.title = `📚 Docs Explorer`;
 
 	console.log('✅ TreeView created successfully');
+
+	// Register stats view
+	console.log('📊 Creating Stats TreeView');
+	const statsView = vscode.window.createTreeView('docusaurusStats', {
+		treeDataProvider: statsProvider,
+		canSelectMany: false
+	});
+
+	console.log('✅ Stats TreeView created successfully');
+
+	// Register stats provider for disposal
+	context.subscriptions.push(statsView, statsProvider);
 
 	// Register commands
 	const refreshCommand = vscode.commands.registerCommand('docusaurus-editor.refreshExplorer', () => {
@@ -175,8 +192,40 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	// Register preview provider
 	const previewProviderRegistration = vscode.workspace.registerTextDocumentContentProvider(
 		'docusaurus-preview',
-		previewProvider
-	);
+		previewProvider	);
+
+	// Create Markdown Template Provider
+	console.log('📝 Creating Markdown Template Provider');
+	const markdownTemplateProvider = new MarkdownTemplateProvider();
+	
+	// Register Markdown template commands
+	const insertHeadingCommand = vscode.commands.registerCommand('docusaurus-editor.insertHeading', async () => {
+		await markdownTemplateProvider.insertHeading();
+	});
+	
+	const insertListCommand = vscode.commands.registerCommand('docusaurus-editor.insertList', async () => {
+		await markdownTemplateProvider.insertList();
+	});
+	
+	const insertCodeBlockCommand = vscode.commands.registerCommand('docusaurus-editor.insertCodeBlock', async () => {
+		await markdownTemplateProvider.insertCodeBlock();
+	});
+	
+	const insertAdmonitionCommand = vscode.commands.registerCommand('docusaurus-editor.insertAdmonition', async () => {
+		await markdownTemplateProvider.insertAdmonition();
+	});
+	
+	const insertTableCommand = vscode.commands.registerCommand('docusaurus-editor.insertTable', async () => {
+		await markdownTemplateProvider.insertTable();
+	});
+	
+	const insertLinkCommand = vscode.commands.registerCommand('docusaurus-editor.insertLink', async () => {
+		await markdownTemplateProvider.insertLink();
+	});
+	
+	const insertImageCommand = vscode.commands.registerCommand('docusaurus-editor.insertImage', async () => {
+		await markdownTemplateProvider.insertImage();
+	});
 
 	// Register preview command
 	const previewCommand = vscode.commands.registerCommand('docusaurus-editor.showPreview', async () => {
@@ -240,6 +289,7 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 			treeDataProvider.refresh();
 			categoryHandler.setContentType('docs');
 			newFileHandler.setContentType('docs');
+			statsProvider.setContentType('docs');
 			treeView.title = `📚 Docs Explorer`;
 			vscode.window.showInformationMessage('Switched to Docs view');
 		}
@@ -252,6 +302,7 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 			treeDataProvider.refresh();
 			categoryHandler.setContentType('blog');
 			newFileHandler.setContentType('blog');
+			statsProvider.setContentType('blog');
 			treeView.title = `📝 Blog Explorer`;
 			vscode.window.showInformationMessage('Switched to Blog view');
 		}
@@ -289,7 +340,14 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		refreshPreviewCommand,
 		switchToDocsCommand,
 		switchToBlogCommand,
-		toggleContentTypeCommand
+		toggleContentTypeCommand,
+		insertHeadingCommand,
+		insertListCommand,
+		insertCodeBlockCommand,
+		insertAdmonitionCommand,
+		insertTableCommand,
+		insertLinkCommand,
+		insertImageCommand
 	);
 
 	console.log(`Docusaurus Editor initialized for: ${docusaurusRoot}`);
