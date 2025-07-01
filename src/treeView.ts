@@ -49,10 +49,21 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
     readonly onDidChangeTreeData: vscode.Event<DocItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
     private docsPaths: string[] = [];
+    private blogPaths: string[] = [];
+    private currentContentType: 'docs' | 'blog' = 'docs';
 
     constructor(private workspaceRoot: string) {
         console.log('🌳 DocusaurusTreeDataProvider constructor called with:', workspaceRoot);
         this.refresh();
+    }
+
+    setContentType(contentType: 'docs' | 'blog'): void {
+        this.currentContentType = contentType;
+        console.log(`📝 Content type changed to: ${contentType}`);
+    }
+
+    getCurrentContentType(): 'docs' | 'blog' {
+        return this.currentContentType;
     }
 
     refresh(): void {
@@ -98,6 +109,7 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
         ];
 
         this.docsPaths = [];
+        this.blogPaths = [];
 
         for (const configPath of configPaths) {
             console.log('🔍 Checking config path:', configPath);
@@ -109,7 +121,7 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
         }
         
         // If no config found, try common folder patterns
-        console.log('⚠️ No config file found, searching for common doc folders');
+        console.log('⚠️ No config file found, searching for common doc/blog folders');
         this.findDocumentFolders();
     }
 
@@ -120,6 +132,7 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
 
             // Extract plugin-content-docs configurations
             const docsPluginMatches = this.extractDocsPlugins(configContent);
+            const blogPluginMatches = this.extractBlogPlugins(configContent);
             
             if (docsPluginMatches.length > 0) {
                 console.log(`📚 Found ${docsPluginMatches.length} docs plugin(s)`);
@@ -137,14 +150,43 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
                     }
                 }
             }
-            
-            // If no paths found from config, use default
-            if (this.docsPaths.length === 0) {
-                console.log('📁 No paths found in config, using default docs folder');
-                const defaultDocsPath = path.join(this.workspaceRoot, 'docs');
-                if (fs.existsSync(defaultDocsPath)) {
-                    this.docsPaths.push(defaultDocsPath);
+
+            if (blogPluginMatches.length > 0) {
+                console.log(`📝 Found ${blogPluginMatches.length} blog plugin(s)`);
+                
+                for (const match of blogPluginMatches) {
+                    const blogPath = this.extractPathFromPlugin(match);
+                    if (blogPath) {
+                        const fullPath = path.resolve(this.workspaceRoot, blogPath);
+                        if (fs.existsSync(fullPath)) {
+                            console.log('✅ Adding blog path:', fullPath);
+                            this.blogPaths.push(fullPath);
+                        } else {
+                            console.log('⚠️ Blog path not found:', fullPath);
+                        }
+                    }
                 }
+            }
+            
+            // Always check for default docs and blog folders first
+            console.log('📁 Checking default docs and blog folders');
+            const defaultDocsPath = path.join(this.workspaceRoot, 'docs');
+            const defaultBlogPath = path.join(this.workspaceRoot, 'blog');
+            
+            if (fs.existsSync(defaultDocsPath)) {
+                console.log('✅ Found default docs folder:', defaultDocsPath);
+                this.docsPaths.push(defaultDocsPath);
+            }
+            
+            if (fs.existsSync(defaultBlogPath)) {
+                console.log('✅ Found default blog folder:', defaultBlogPath);
+                this.blogPaths.push(defaultBlogPath);
+            }
+            
+            // If no additional paths found from config, we're done
+            if (this.docsPaths.length === 0 && this.blogPaths.length === 0) {
+                console.log('⚠️ No default folders found, searching for additional ones');
+                this.findDocumentFolders();
             }
         } catch (error) {
             console.error('❌ Error parsing config file:', error);
@@ -190,6 +232,48 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
         return plugins;
     }
 
+    private extractBlogPlugins(configContent: string): string[] {
+        const plugins: string[] = [];
+        
+        // Pattern 1: @docusaurus/plugin-content-blog with configuration
+        const pluginPattern1 = /@docusaurus\/plugin-content-blog['"]\s*,\s*{([^}]+)}/g;
+        let match;
+        
+        while ((match = pluginPattern1.exec(configContent)) !== null) {
+            plugins.push(match[1]);
+        }
+
+        // Pattern 2: plugins array with objects
+        const pluginPattern2 = /{\s*['"]*preset['"]*:\s*['"]@docusaurus\/plugin-content-blog['"][^}]*}/g;
+        while ((match = pluginPattern2.exec(configContent)) !== null) {
+            plugins.push(match[0]);
+        }
+
+        // Pattern 3: Simple string reference in plugins array
+        const pluginPattern3 = /plugins:\s*\[([\s\S]*?)\]/;
+        const pluginsMatch = configContent.match(pluginPattern3);
+        if (pluginsMatch) {
+            const pluginsContent = pluginsMatch[1];
+            const blogPluginPattern = /{[^}]*@docusaurus\/plugin-content-blog[^}]*}/g;
+            while ((match = blogPluginPattern.exec(pluginsContent)) !== null) {
+                plugins.push(match[0]);
+            }
+        }
+
+        // Pattern 4: preset configuration
+        const presetPattern = /@docusaurus\/preset-classic['"]\s*,\s*{([^}]+)}/g;
+        while ((match = presetPattern.exec(configContent)) !== null) {
+            const presetConfig = match[1];
+            const blogConfigPattern = /blog:\s*{([^}]+)}/;
+            const blogConfigMatch = presetConfig.match(blogConfigPattern);
+            if (blogConfigMatch) {
+                plugins.push(blogConfigMatch[1]);
+            }
+        }
+
+        return plugins;
+    }
+
     private extractPathFromPlugin(pluginConfig: string): string | null {
         // Extract path or id from plugin configuration
         
@@ -223,13 +307,16 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
         console.log('🔍 Searching for document folders');
         
         // Common Docusaurus folder patterns
-        const commonFolders = [
+        const commonDocsFolders = [
             'docs',           // Default docs
-            'blog',           // Blog posts (if any)
             'api',            // API docs
             'guides',         // Guides
             'tutorials',      // Tutorials
             'versioned_docs', // Versioned docs
+        ];
+
+        const commonBlogFolders = [
+            'blog',           // Blog posts
         ];
 
         // Also check for folders that might contain markdown files
@@ -240,10 +327,30 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
                 if (entry.isDirectory() && !entry.name.startsWith('.') && !entry.name.startsWith('node_modules')) {
                     const fullPath = path.join(this.workspaceRoot, entry.name);
                     
-                    // Check if it's a common folder or contains markdown files
-                    if (commonFolders.includes(entry.name) || this.containsMarkdownFiles(fullPath)) {
-                        console.log('📁 Adding potential docs folder:', fullPath);
+                    // Check if it's a docs folder
+                    if (commonDocsFolders.includes(entry.name)) {
+                        console.log('📁 Adding docs folder:', fullPath);
                         this.docsPaths.push(fullPath);
+                    }
+
+                    // Check if it's a blog folder
+                    if (commonBlogFolders.includes(entry.name)) {
+                        console.log('� Adding blog folder:', fullPath);
+                        this.blogPaths.push(fullPath);
+                    }
+
+                    // Check for other folders that contain markdown files (but not already categorized)
+                    if (!commonDocsFolders.includes(entry.name) && !commonBlogFolders.includes(entry.name)) {
+                        if (this.containsMarkdownFiles(fullPath)) {
+                            // Determine if it's more likely docs or blog based on content
+                            if (entry.name.toLowerCase().includes('blog') || this.containsBlogFiles(fullPath)) {
+                                console.log('📝 Adding potential blog folder:', fullPath);
+                                this.blogPaths.push(fullPath);
+                            } else {
+                                console.log('📁 Adding potential docs folder:', fullPath);
+                                this.docsPaths.push(fullPath);
+                            }
+                        }
                     }
                 }
             }
@@ -286,24 +393,65 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
         return false;
     }
 
+    private containsBlogFiles(folderPath: string): boolean {
+        try {
+            const entries = fs.readdirSync(folderPath, { withFileTypes: true });
+            
+            for (const entry of entries) {
+                if (entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.mdx'))) {
+                    // Check if file has blog-like naming pattern (YYYY-MM-DD-title.md)
+                    const blogFilePattern = /^\d{4}-\d{2}-\d{2}-.+\.(md|mdx)$/;
+                    if (blogFilePattern.test(entry.name)) {
+                        return true;
+                    }
+                    
+                    // Check frontmatter for blog-specific fields
+                    try {
+                        const filePath = path.join(folderPath, entry.name);
+                        const content = fs.readFileSync(filePath, 'utf8');
+                        const frontmatter = matter(content);
+                        
+                        // Look for blog-specific frontmatter fields
+                        if (frontmatter.data.authors || frontmatter.data.tags || frontmatter.data.slug) {
+                            return true;
+                        }
+                    } catch (error) {
+                        // If we can't read the file, continue
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error checking for blog files:', error);
+        }
+        
+        return false;
+    }
+
     private getRootItems(): DocItem[] {
-        console.log('🔍 Getting root items, docsPaths:', this.docsPaths);
+        const currentPaths = this.currentContentType === 'docs' ? this.docsPaths : this.blogPaths;
+        const contentTypeLabel = this.currentContentType === 'docs' ? 'documentation' : 'blog';
+        
+        console.log(`🔍 Getting root items for ${this.currentContentType}`);
+        console.log(`📁 Current paths (${this.currentContentType}):`, currentPaths);
+        console.log(`📚 All docs paths:`, this.docsPaths);
+        console.log(`📝 All blog paths:`, this.blogPaths);
+        
         const items: DocItem[] = [];
         
-        if (this.docsPaths.length === 0) {
-            console.log('⚠️ No docs paths found, creating default item');
-            // If no docs paths found, create a default item for testing
+        if (currentPaths.length === 0) {
+            console.log(`⚠️ No ${this.currentContentType} paths found, creating default item`);
+            // If no paths found, create a default item for testing
             items.push({
-                label: 'No documentation folders found',
+                label: `No ${contentTypeLabel} folders found`,
                 type: 'folder',
                 filePath: this.workspaceRoot
             });
             return items;
         }
         
-        for (const docsPath of this.docsPaths) {
-            const folderName = path.basename(docsPath);
-            const relativePath = path.relative(this.workspaceRoot, docsPath);
+        for (const contentPath of currentPaths) {
+            const folderName = path.basename(contentPath);
+            const relativePath = path.relative(this.workspaceRoot, contentPath);
             
             // Create a more descriptive label
             let label = folderName;
@@ -311,11 +459,11 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
                 label = `${folderName} (${relativePath})`;
             }
             
-            console.log('📁 Adding root item:', label, 'at', docsPath);
+            console.log('📁 Adding root item:', label, 'at', contentPath);
             items.push({
                 label: label,
                 type: 'folder',
-                filePath: docsPath
+                filePath: contentPath
             });
         }
 

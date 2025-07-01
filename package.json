@@ -106,29 +106,49 @@
         "command": "docusaurus-editor.deleteCategory",
         "title": "カテゴリを削除",
         "icon": "$(trash)"
+      },
+      {
+        "command": "docusaurus-editor.switchToDocs",
+        "title": "ドキュメントビューに切り替え",
+        "icon": "$(book)"
+      },
+      {
+        "command": "docusaurus-editor.switchToBlog",
+        "title": "ブログビューに切り替え",
+        "icon": "$(rss)"
+      },
+      {
+        "command": "docusaurus-editor.toggleContentType",
+        "title": "ドキュメント/ブログ切り替え",
+        "icon": "$(arrow-swap)"
       }
     ],
     "menus": {
       "view/title": [
         {
+          "command": "docusaurus-editor.toggleContentType",
+          "when": "view == docusaurusExplorer",
+          "group": "navigation@0"
+        },
+        {
           "command": "docusaurus-editor.refreshExplorer",
           "when": "view == docusaurusExplorer",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
           "command": "docusaurus-editor.createNewDoc",
           "when": "view == docusaurusExplorer",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "docusaurus-editor.gitCommit",
           "when": "view == docusaurusExplorer",
-          "group": "navigation"
+          "group": "navigation@3"
         },
         {
           "command": "docusaurus-editor.createCategory",
           "when": "view == docusaurusExplorer",
-          "group": "navigation"
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [
@@ -175,7 +195,15 @@
           "group": "docusaurus"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "docusaurus-editor.showPreview",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "resourceExtname == .md || resourceExtname == .mdx"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -197,7 +225,11 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@types/marked": "^5.0.2",
+    "@types/prismjs": "^1.26.5",
     "gray-matter": "^4.0.3",
+    "marked": "^16.0.0",
+    "prismjs": "^1.30.0",
     "simple-git": "^3.28.0"
   }
 }

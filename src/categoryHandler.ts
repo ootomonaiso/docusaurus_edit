@@ -2,21 +2,32 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 
-/**
- * Docusaurusカテゴリ管理機能
- * より見やすく使いやすいUIを提供
- */
 export class CategoryHandler {
-    constructor(private docusaurusRoot: string) {}
+    constructor(private docusaurusRoot: string, private contentType: 'docs' | 'blog' = 'docs') {}
+
+    /**
+     * コンテンツタイプを設定
+     */
+    setContentType(contentType: 'docs' | 'blog'): void {
+        this.contentType = contentType;
+    }
 
     /**
      * 新しいカテゴリ（フォルダ）を作成（改善版UI）
      */
     async createNewCategory(parentFolderPath?: string): Promise<void> {
+        // Blogの場合はカテゴリ作成をサポートしない
+        if (this.contentType === 'blog') {
+            vscode.window.showInformationMessage('📝 ブログはタグベースで整理されます。カテゴリ（フォルダ）の作成は不要です。');
+            return;
+        }
+
         try {
+            const contentTypeLabel = this.contentType === 'docs' ? 'ドキュメント' : 'ブログ';
+            
             // カテゴリ名の入力
             const categoryName = await vscode.window.showInputBox({
-                prompt: '新しいカテゴリのフォルダ名を入力してください',
+                prompt: `新しい${contentTypeLabel}カテゴリのフォルダ名を入力してください`,
                 placeHolder: 'カテゴリ名（例: getting-started, api-reference）',
                 validateInput: (value) => {
                     if (!value?.trim()) {
@@ -34,8 +45,8 @@ export class CategoryHandler {
             }
 
             // 親フォルダーを決定
-            const docsPath = parentFolderPath || path.join(this.docusaurusRoot, 'docs');
-            const newCategoryPath = path.join(docsPath, categoryName);
+            const defaultPath = parentFolderPath || path.join(this.docusaurusRoot, this.contentType);
+            const newCategoryPath = path.join(defaultPath, categoryName);
 
             // フォルダーが既に存在するかチェック
             if (fs.existsSync(newCategoryPath)) {
@@ -49,7 +60,7 @@ export class CategoryHandler {
             // WebViewパネルを作成して詳細設定画面を表示
             const panel = vscode.window.createWebviewPanel(
                 'categoryCreator',
-                `🆕 新しいカテゴリ: ${categoryName}`,
+                `🆕 新しい${this.contentType === 'docs' ? 'ドキュメント' : 'ブログ'}カテゴリ: ${categoryName}`,
                 vscode.ViewColumn.One,
                 {
                     enableScripts: true,
@@ -61,8 +72,8 @@ export class CategoryHandler {
             // 初期設定
             const initialConfig = {
                 label: this.formatDisplayName(categoryName),
-                position: await this.getNextPosition(docsPath),
-                description: `${this.formatDisplayName(categoryName)}に関するドキュメント`
+                position: await this.getNextPosition(defaultPath),
+                description: `${this.formatDisplayName(categoryName)}に関する${this.contentType === 'docs' ? 'ドキュメント' : 'ブログ記事'}`
             };
 
             // Webviewの内容を設定
@@ -254,9 +265,10 @@ export class CategoryHandler {
     private getCategoryEditorHtml(categoryConfig: any, categoryName: string, isCreating: boolean = false): string {
         const currentLabel = categoryConfig.label || this.formatDisplayName(categoryName);
         const currentPosition = categoryConfig.position || 1;
-        const currentDescription = categoryConfig.link?.description || categoryConfig.description || `${currentLabel}に関するドキュメント`;
+        const currentDescription = categoryConfig.link?.description || categoryConfig.description || `${currentLabel}に関する${this.contentType === 'docs' ? 'ドキュメント' : 'ブログ記事'}`;
 
-        const title = isCreating ? '🆕 新しいカテゴリを作成' : '✏️ カテゴリ設定編集';
+        const contentTypeLabel = this.contentType === 'docs' ? 'ドキュメント' : 'ブログ';
+        const title = isCreating ? `🆕 新しい${contentTypeLabel}カテゴリを作成` : `✏️ ${contentTypeLabel}カテゴリ設定編集`;
         const saveButtonText = isCreating ? '🆕 作成' : '💾 保存';
 
         return `<!DOCTYPE html>

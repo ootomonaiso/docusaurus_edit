@@ -14,6 +14,7 @@ import * as fs from 'fs';
 let treeDataProvider: DocusaurusTreeDataProvider | undefined;
 let treeView: vscode.TreeView<any> | undefined;
 let currentDocusaurusRoot: string | undefined;
+let currentContentType: 'docs' | 'blog' = 'docs';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -88,10 +89,10 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	const gitHandler = new GitHandler(docusaurusRoot);
 	
 	console.log('📄 Creating NewFileHandler');
-	const newFileHandler = new NewFileHandler(docusaurusRoot);
+	const newFileHandler = new NewFileHandler(docusaurusRoot, currentContentType);
 
 	console.log('📁 Creating CategoryHandler');
-	const categoryHandler = new CategoryHandler(docusaurusRoot);
+	const categoryHandler = new CategoryHandler(docusaurusRoot, currentContentType);
 
 	// Create completion and preview providers
 	console.log('💬 Creating Docusaurus Completion Provider');
@@ -107,6 +108,9 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		dragAndDropController: dragController,
 		canSelectMany: false
 	});
+
+	// Set initial tree view title
+	treeView.title = `📚 Docs Explorer`;
 
 	console.log('✅ TreeView created successfully');
 
@@ -195,22 +199,23 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 			vscode.ViewColumn.Beside,
 			{
 				enableScripts: true,
-				retainContextWhenHidden: true
+				retainContextWhenHidden: true,
+				localResourceRoots: [
+					vscode.Uri.file(path.dirname(document.fileName)),
+					vscode.Uri.file(docusaurusRoot),
+					...(vscode.workspace.workspaceFolders || []).map(folder => folder.uri)
+				]
 			}
 		);
 
 		// Generate and set webview content
-		const content = previewProvider.provideTextDocumentContent(
-			vscode.Uri.parse(`docusaurus-preview://preview?${document.uri.toString()}`)
-		);
+		const content = previewProvider.generateWebViewContent(document, panel.webview);
 		panel.webview.html = content;
 
 		// Update preview when document changes
 		const changeSubscription = vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
 			if (e.document === document) {
-				const updatedContent = previewProvider.provideTextDocumentContent(
-					vscode.Uri.parse(`docusaurus-preview://preview?${document.uri.toString()}`)
-				);
+				const updatedContent = previewProvider.generateWebViewContent(document, panel.webview);
 				panel.webview.html = updatedContent;
 			}
 		});
@@ -225,6 +230,45 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	const refreshPreviewCommand = vscode.commands.registerCommand('docusaurus-editor.refreshPreview', () => {
 		previewProvider.refresh();
 		vscode.window.showInformationMessage('Docusaurus プレビューを更新しました');
+	});
+
+	// Register content type switching commands
+	const switchToDocsCommand = vscode.commands.registerCommand('docusaurus-editor.switchToDocs', async () => {
+		currentContentType = 'docs';
+		if (treeDataProvider && treeView) {
+			treeDataProvider.setContentType('docs');
+			treeDataProvider.refresh();
+			categoryHandler.setContentType('docs');
+			newFileHandler.setContentType('docs');
+			treeView.title = `📚 Docs Explorer`;
+			vscode.window.showInformationMessage('Switched to Docs view');
+		}
+	});
+
+	const switchToBlogCommand = vscode.commands.registerCommand('docusaurus-editor.switchToBlog', async () => {
+		currentContentType = 'blog';
+		if (treeDataProvider && treeView) {
+			treeDataProvider.setContentType('blog');
+			treeDataProvider.refresh();
+			categoryHandler.setContentType('blog');
+			newFileHandler.setContentType('blog');
+			treeView.title = `📝 Blog Explorer`;
+			vscode.window.showInformationMessage('Switched to Blog view');
+		}
+	});
+
+	const toggleContentTypeCommand = vscode.commands.registerCommand('docusaurus-editor.toggleContentType', async () => {
+		currentContentType = currentContentType === 'docs' ? 'blog' : 'docs';
+		if (treeDataProvider && treeView) {
+			treeDataProvider.setContentType(currentContentType);
+			treeDataProvider.refresh();
+			categoryHandler.setContentType(currentContentType);
+			newFileHandler.setContentType(currentContentType);
+			const titleEmoji = currentContentType === 'docs' ? '📚' : '📝';
+			const titleText = currentContentType === 'docs' ? 'Docs' : 'Blog';
+			treeView.title = `${titleEmoji} ${titleText} Explorer`;
+			vscode.window.showInformationMessage(`Switched to ${currentContentType.charAt(0).toUpperCase() + currentContentType.slice(1)} view`);
+		}
 	});
 
 	// Add to subscriptions
@@ -242,7 +286,10 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		mdxCompletionProvider,
 		previewProviderRegistration,
 		previewCommand,
-		refreshPreviewCommand
+		refreshPreviewCommand,
+		switchToDocsCommand,
+		switchToBlogCommand,
+		toggleContentTypeCommand
 	);
 
 	console.log(`Docusaurus Editor initialized for: ${docusaurusRoot}`);
