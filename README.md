@@ -1,97 +1,85 @@
 # Docusaurus Editor
 
-A VS Code extension for editing Docusaurus documentation with enhanced productivity features.
+生産性を向上させる機能を備えた、Docusaurus ドキュメント編集用の VS Code 拡張機能です。
 
-## Features
+## 機能
 
-### 🌳 Tree View Explorer
-- Display Docusaurus documentation structure in a dedicated tree view
-- Show documents sorted by `sidebar_position` and `_category_.json` position
-- Navigate quickly through your documentation hierarchy
+### 🌳 ツリービューエクスプローラー
+- 専用のツリービューで Docusaurus ドキュメント構造を表示
+- `sidebar_position` と `_category_.json` の位置でソートされたドキュメントを表示
+- ドキュメント階層を素早くナビゲート
 
-### 📝 Document Management
-- Create new markdown documents with pre-built templates
-- Automatic frontmatter generation with proper `sidebar_position`
-- Support for multiple document templates (Basic, Tutorial, API Reference, Guide)
+### 📝 ドキュメント管理
+- 事前構築されたテンプレートで新しい Markdown ドキュメントを作成
+- 適切な `sidebar_position` を持つ自動フロントマター生成
+- 複数のドキュメントテンプレートをサポート（基本、チュートリアル、API リファレンス、ガイド）
 
-### 🔄 Drag & Drop Reordering
-- Reorder documents and folders by dragging and dropping
-- Automatic `sidebar_position` and `_category_.json` position updates
-- Visual feedback during drag operations
+### 🔄 ドラッグ＆ドロップ並び替え
+- ドラッグ＆ドロップでドキュメントとフォルダーを並び替え
+- `sidebar_position` と `_category_.json` の位置の自動更新
+- ドラッグ操作中の視覚的フィードバック
 
-### 🔗 Git Integration
-- One-click commit and push operations
-- Automatic pull request creation for GitHub repositories
-- Git status display in the tree view
+### 🔗 Git 統合
+- ワンクリックでのコミット・プッシュ操作
+- GitHub リポジトリ用の自動プルリクエスト作成
+- ツリービューでの Git ステータス表示
 
-## Requirements
+## 要件
 
-- VS Code 1.101.0 or higher
-- A Docusaurus project (detected by `docusaurus.config.js/ts` or `@docusaurus/*` dependencies)
-- Git repository (for Git integration features)
+- VS Code 1.101.0 以上
+- Docusaurus プロジェクト（`docusaurus.config.js/ts` または `@docusaurus/*` 依存関係で検出）
+- Git リポジトリ（Git 統合機能を使用する場合）
 
-## Getting Started
+## はじめに
 
-1. Open your Docusaurus project in VS Code
-2. The extension will automatically activate when a Docusaurus project is detected
-3. Use the "Docusaurus Explorer" view in the Explorer panel
-4. Right-click on folders to create new documents
-5. Drag and drop to reorder items
+1. VS Code で Docusaurus プロジェクトを開く
+2. Docusaurus プロジェクトが検出されると、拡張機能が自動的にアクティブになります
+3. エクスプローラーパネルの「Docusaurus Explorer」ビューを使用
+4. フォルダーを右クリックして新しいドキュメントを作成
+5. ドラッグ＆ドロップでアイテムを並び替え
 
-## Extension Settings
+## 拡張機能の設定
 
-This extension contributes the following settings:
+この拡張機能は以下の設定を提供します：
 
-* `docusaurus-editor.enabled`: Enable/disable the extension (automatically set based on project detection)
+* `docusaurus-editor.enabled`: 拡張機能の有効/無効を切り替え（プロジェクト検出に基づいて自動設定）
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+拡張機能が `contributes.configuration` 拡張ポイントを通じて VS Code 設定を追加する場合に含めてください。
 
-For example:
+例：
 
-This extension contributes the following settings:
+この拡張機能は以下の設定を提供します：
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+* `myExtension.enable`: この拡張機能を有効/無効にします。
+* `myExtension.thing`: 何かを実行するために `blah` に設定します。
 
-## Known Issues
+## 既知の問題
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+既知の問題を明記することで、ユーザーが拡張機能に対して重複した問題を報告することを防げます。
 
-## Release Notes
+## リリースノート
 
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+ユーザーは拡張機能を更新する際のリリースノートを重要視します。
 
 ---
 
-## Following extension guidelines
+## 拡張機能ガイドラインの遵守
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+拡張機能ガイドラインを読み、拡張機能作成のベストプラクティスに従うことを確認してください。
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+* [拡張機能ガイドライン](https://code.visualstudio.com/api/references/extension-guidelines)
 
-## Working with Markdown
+## Markdown の使用
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+Visual Studio Code を使用して README を作成できます。以下は便利なエディターキーボードショートカットです：
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+* エディターを分割（macOS では `Cmd+\`、Windows と Linux では `Ctrl+\`）。
+* プレビューの切り替え（macOS では `Shift+Cmd+V`、Windows と Linux では `Shift+Ctrl+V`）。
+* `Ctrl+Space`（Windows、Linux、macOS）を押すと、Markdown スニペットの一覧が表示されます。
 
-## For more information
+## 詳細情報
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+* [Visual Studio Code の Markdown サポート](http://code.visualstudio.com/docs/languages/markdown)
+* [Markdown 構文リファレンス](https://help.github.com/articles/markdown-basics/)
 
-**Enjoy!**
+**お楽しみください！**
