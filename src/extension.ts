@@ -9,7 +9,6 @@ import { DocusaurusCompletionProvider } from './completionProvider';
 import { DocusaurusPreviewProvider } from './previewProvider';
 import { CategoryHandler } from './categoryHandler';
 import { MarkdownTemplateProvider } from './markdownTemplates';
-import { DocusaurusStatsProvider } from './statsProvider';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -96,9 +95,6 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	console.log('📁 Creating CategoryHandler');
 	const categoryHandler = new CategoryHandler(docusaurusRoot, currentContentType);
 
-	console.log('📊 Creating StatsProvider');
-	const statsProvider = new DocusaurusStatsProvider(docusaurusRoot);
-
 	// Create completion and preview providers
 	console.log('💬 Creating Docusaurus Completion Provider');
 	const completionProvider = new DocusaurusCompletionProvider();
@@ -118,18 +114,6 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	treeView.title = `📚 Docs Explorer`;
 
 	console.log('✅ TreeView created successfully');
-
-	// Register stats view
-	console.log('📊 Creating Stats TreeView');
-	const statsView = vscode.window.createTreeView('docusaurusStats', {
-		treeDataProvider: statsProvider,
-		canSelectMany: false
-	});
-
-	console.log('✅ Stats TreeView created successfully');
-
-	// Register stats provider for disposal
-	context.subscriptions.push(statsView, statsProvider);
 
 	// Register commands
 	const refreshCommand = vscode.commands.registerCommand('docusaurus-editor.refreshExplorer', () => {
@@ -289,7 +273,6 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 			treeDataProvider.refresh();
 			categoryHandler.setContentType('docs');
 			newFileHandler.setContentType('docs');
-			statsProvider.setContentType('docs');
 			treeView.title = `📚 Docs Explorer`;
 			vscode.window.showInformationMessage('Switched to Docs view');
 		}
@@ -302,7 +285,6 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 			treeDataProvider.refresh();
 			categoryHandler.setContentType('blog');
 			newFileHandler.setContentType('blog');
-			statsProvider.setContentType('blog');
 			treeView.title = `📝 Blog Explorer`;
 			vscode.window.showInformationMessage('Switched to Blog view');
 		}

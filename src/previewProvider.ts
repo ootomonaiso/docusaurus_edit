@@ -717,39 +717,12 @@ export class DocusaurusPreviewProvider implements vscode.TextDocumentContentProv
                 flex-wrap: wrap;
             }
             
-            .date, .authors, .reading-time {
+            .date, .authors {
                 color: var(--text-secondary);
                 font-size: 14px;
                 display: flex;
                 align-items: center;
                 gap: 5px;
-            }
-            
-            .reading-time {
-                font-weight: 600;
-                color: var(--accent-color);
-            }
-            
-            .content-stats {
-                display: flex;
-                gap: 16px;
-                margin: 12px 0;
-                flex-wrap: wrap;
-                padding: 8px 0;
-                border-top: 1px solid var(--border-light);
-                border-bottom: 1px solid var(--border-light);
-            }
-            
-            .stat {
-                color: var(--text-secondary);
-                font-size: 13px;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                background: var(--bg-tertiary);
-                padding: 4px 8px;
-                border-radius: 12px;
-                white-space: nowrap;
             }
             
             .tags {
@@ -1151,13 +1124,8 @@ export class DocusaurusPreviewProvider implements vscode.TextDocumentContentProv
         const fileName = path.basename(document.fileName);
         const contentType = isBlogPost ? '📝 Blog' : '📚 Docs';
         
-        // 文字数カウンターと読了時間を計算
-        const content = document.getText();
-        const { content: markdownContent } = matter(content);
-        const stats = this.calculateContentStats(markdownContent);
-        
         if (isBlogPost) {
-            // Blog用のヘッダー（タイトル、日付、著者、タグ、読了時間、統計を表示）
+            // Blog用のヘッダー（タイトル、日付、著者、タグを表示）
             const title = frontmatter.title || fileName;
             const date = frontmatter.date ? new Date(frontmatter.date).toLocaleDateString('ja-JP') : '';
             const authors = Array.isArray(frontmatter.authors) ? frontmatter.authors.join(', ') : frontmatter.authors || '';
@@ -1174,14 +1142,6 @@ export class DocusaurusPreviewProvider implements vscode.TextDocumentContentProv
                     <div class="blog-meta">
                         ${date ? `<span class="date">📅 ${date}</span>` : ''}
                         ${authors ? `<span class="authors">✍️ ${this.escapeHtml(authors)}</span>` : ''}
-                        <span class="reading-time">⏱️ ${stats.readingTimeMinutes}分で読めます</span>
-                    </div>
-                    <div class="content-stats">
-                        <span class="stat">📝 ${stats.characters.toLocaleString()}文字</span>
-                        <span class="stat">📖 ${stats.words.toLocaleString()}語</span>
-                        <span class="stat">📄 ${stats.paragraphs}段落</span>
-                        ${stats.codeBlocks > 0 ? `<span class="stat">💻 ${stats.codeBlocks}コードブロック</span>` : ''}
-                        ${stats.admonitions > 0 ? `<span class="stat">💡 ${stats.admonitions}アドモニション</span>` : ''}
                     </div>
                     ${tags.length > 0 ? `
                         <div class="tags">
@@ -1191,7 +1151,7 @@ export class DocusaurusPreviewProvider implements vscode.TextDocumentContentProv
                 </div>
             `;
         } else {
-            // Docs用のヘッダー（タイトル、位置、読了時間、統計のみ。タグは表示しない）
+            // Docs用のヘッダー（タイトル、位置のみ）
             const title = frontmatter.title || fileName;
             const sidebar_position = frontmatter.sidebar_position;
             
@@ -1200,16 +1160,8 @@ export class DocusaurusPreviewProvider implements vscode.TextDocumentContentProv
                     <div class="header-meta">
                         <span class="content-type">${contentType}</span>
                         ${sidebar_position ? `<span class="position">位置: ${sidebar_position}</span>` : ''}
-                        <span class="reading-time">⏱️ ${stats.readingTimeMinutes}分</span>
                     </div>
                     <h1 class="docs-title">${this.escapeHtml(title)}</h1>
-                    <div class="content-stats">
-                        <span class="stat">📝 ${stats.characters.toLocaleString()}文字</span>
-                        <span class="stat">📖 ${stats.words.toLocaleString()}語</span>
-                        <span class="stat">📄 ${stats.paragraphs}段落</span>
-                        ${stats.codeBlocks > 0 ? `<span class="stat">💻 ${stats.codeBlocks}コードブロック</span>` : ''}
-                        ${stats.admonitions > 0 ? `<span class="stat">💡 ${stats.admonitions}アドモニション</span>` : ''}
-                    </div>
                     <p class="file-name">ファイル: ${fileName}</p>
                 </div>
             `;
@@ -1224,67 +1176,6 @@ export class DocusaurusPreviewProvider implements vscode.TextDocumentContentProv
                 this._onDidChange.fire(uri);
             }
         });
-    }
-
-    /**
-     * コンテンツの統計情報を計算（文字数、単語数、読了時間など）
-     */
-    private calculateContentStats(content: string): {
-        characters: number;
-        charactersNoSpaces: number;
-        words: number;
-        readingTimeMinutes: number;
-        paragraphs: number;
-        codeBlocks: number;
-        admonitions: number;
-    } {
-        // マークダウン記法を除去してプレーンテキストを取得
-        let plainText = content
-            // コードブロックを除去
-            .replace(/```[\s\S]*?```/g, '')
-            // インラインコードを除去
-            .replace(/`[^`]+`/g, '')
-            // Admonitionを除去
-            .replace(/:::(note|tip|info|caution|danger|warning)[\s\S]*?:::/gi, '')
-            // リンクのURLを除去
-            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-            // 画像記法を除去
-            .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-            // HTMLタグを除去
-            .replace(/<[^>]+>/g, '')
-            // マークダウン記法を除去
-            .replace(/[*_~`#>-]/g, '')
-            // 余分な空白を正規化
-            .replace(/\s+/g, ' ')
-            .trim();
-
-        const characters = plainText.length;
-        const charactersNoSpaces = plainText.replace(/\s/g, '').length;
-        
-        // 日本語と英語混在を考慮した単語数計算
-        const japaneseChars = (plainText.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
-        const englishWords = (plainText.match(/[a-zA-Z]+/g) || []).length;
-        const words = japaneseChars + englishWords;
-        
-        // 読了時間の計算（日本語: 400文字/分、英語: 200単語/分）
-        const japaneseReadingTime = japaneseChars / 400;
-        const englishReadingTime = englishWords / 200;
-        const readingTimeMinutes = Math.max(1, Math.ceil(japaneseReadingTime + englishReadingTime));
-        
-        // その他の統計
-        const paragraphs = (content.match(/\n\s*\n/g) || []).length + 1;
-        const codeBlocks = (content.match(/```/g) || []).length / 2;
-        const admonitions = (content.match(/:::(note|tip|info|caution|danger|warning)/gi) || []).length;
-        
-        return {
-            characters,
-            charactersNoSpaces,
-            words,
-            readingTimeMinutes,
-            paragraphs,
-            codeBlocks,
-            admonitions
-        };
     }
 
     private processImages(content: string): string {
