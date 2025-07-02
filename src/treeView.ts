@@ -5,7 +5,7 @@ import matter from 'gray-matter';
 
 export interface DocItem {
     label: string;
-    type: 'file' | 'folder';
+    type: 'file' | 'folder' | 'image';
     filePath: string;
     position?: number;
     id?: string;
@@ -21,7 +21,8 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
         super(docItem.label, collapsibleState);
         
         this.tooltip = docItem.title || docItem.label;
-        this.description = docItem.position ? `pos: ${docItem.position}` : '';
+        // Only show position for files and folders, not images
+        this.description = (docItem.position && docItem.type !== 'image') ? `pos: ${docItem.position}` : '';
         
         if (docItem.type === 'file') {
             this.command = {
@@ -31,15 +32,28 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
             };
             this.contextValue = 'docFile';
             this.iconPath = new vscode.ThemeIcon('markdown');
+        } else if (docItem.type === 'image') {
+            this.command = {
+                command: 'vscode.open',
+                title: 'Open Image',
+                arguments: [vscode.Uri.file(docItem.filePath)]
+            };
+            this.contextValue = 'imageFile';
+            this.iconPath = new vscode.ThemeIcon('file-media');
         } else {
-            // Check if folder is a category (has _category_.json)
-            const categoryConfigPath = path.join(docItem.filePath, '_category_.json');
-            const isCategory = fs.existsSync(categoryConfigPath);
-            
-            this.contextValue = isCategory ? 'docCategory' : 'docFolder';
-            this.iconPath = isCategory 
-                ? new vscode.ThemeIcon('folder-library') 
-                : new vscode.ThemeIcon('folder');
+            // Check if folder is a category (has _category_.json) or Images folder
+            if (docItem.label.startsWith('Images (')) {
+                this.contextValue = 'imagesFolder';
+                this.iconPath = new vscode.ThemeIcon('file-media');
+            } else {
+                const categoryConfigPath = path.join(docItem.filePath, '_category_.json');
+                const isCategory = fs.existsSync(categoryConfigPath);
+                
+                this.contextValue = isCategory ? 'docCategory' : 'docFolder';
+                this.iconPath = isCategory 
+                    ? new vscode.ThemeIcon('folder-library') 
+                    : new vscode.ThemeIcon('folder');
+            }
         }
     }
 }
@@ -75,8 +89,19 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
 
     getTreeItem(element: DocItem): vscode.TreeItem {
         console.log('📋 getTreeItem called for:', element.label);
-        return new DocusaurusTreeItem(element, 
-            element.type === 'folder' ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.None);
+        
+        let collapsibleState = vscode.TreeItemCollapsibleState.None;
+        
+        if (element.type === 'folder') {
+            // Images folder should start collapsed, others expanded
+            if (element.label.startsWith('Images (')) {
+                collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+            } else {
+                collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
+            }
+        }
+        
+        return new DocusaurusTreeItem(element, collapsibleState);
     }
 
     getChildren(element?: DocItem): Thenable<DocItem[]> {
@@ -89,6 +114,12 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
         }
 
         if (element) {
+            // Check if this is a virtual Images folder
+            if (element.label.startsWith('Images (') && element.children) {
+                console.log('📸 Getting children for Images folder');
+                return Promise.resolve(element.children);
+            }
+            
             // Return children of the selected folder
             console.log('📁 Getting children for folder:', element.filePath);
             return Promise.resolve(this.getDocItemsFromPath(element.filePath));
@@ -477,6 +508,7 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
         }
 
         const items: DocItem[] = [];
+        const imageItems: DocItem[] = [];
         const entries = fs.readdirSync(folderPath, { withFileTypes: true });
 
         // Parse category file if exists
@@ -490,6 +522,9 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
                 console.error('Error parsing _category_.json:', error);
             }
         }
+
+        // Common image file extensions
+        const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp', '.ico'];
 
         for (const entry of entries) {
             if (entry.name.startsWith('.') || entry.name === '_category_.json') {
@@ -539,15 +574,45 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
                         filePath: fullPath
                     });
                 }
+            } else {
+                // Check if it's an image file
+                const fileExtension = path.extname(entry.name).toLowerCase();
+                if (imageExtensions.includes(fileExtension)) {
+                    imageItems.push({
+                        label: entry.name,
+                        type: 'image',
+                        filePath: fullPath
+                        // No position for images
+                    });
+                }
             }
         }
 
-        // Sort by position
+        // Sort regular items by position
         items.sort((a, b) => {
             const posA = a.position || 999;
             const posB = b.position || 999;
             return posA - posB;
         });
+
+        // Sort image items alphabetically
+        imageItems.sort((a, b) => a.label.localeCompare(b.label));
+
+        // If there are images, create an "Images" folder to contain them
+        if (imageItems.length > 0) {
+            console.log(`📸 Found ${imageItems.length} image(s) in ${folderPath}`);
+            
+            // Create a virtual folder for images
+            const imagesFolder: DocItem = {
+                label: `Images (${imageItems.length})`,
+                type: 'folder',
+                filePath: path.join(folderPath, '__images__'), // Virtual path
+                position: 1000, // Place at the end
+                children: imageItems
+            };
+            
+            items.push(imagesFolder);
+        }
 
         return items;
     }

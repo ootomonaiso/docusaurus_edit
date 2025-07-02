@@ -15,6 +15,7 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+
     "languages": [
       {
         "id": "mdx",
@@ -78,6 +79,11 @@
         "command": "docusaurus-editor.createPullRequest",
         "title": "プルリクエストを作成",
         "icon": "$(git-pull-request)"
+      },
+      {
+        "command": "docusaurus-editor.addImage",
+        "title": "画像を追加",
+        "icon": "$(file-media)"
       },
       {
         "command": "docusaurus-editor.setDocusaurusRoot",
@@ -259,6 +265,16 @@
           "command": "docusaurus-editor.deleteCategory",
           "when": "view == docusaurusExplorer && viewItem == docCategory",
           "group": "category@2"
+        },
+        {
+          "command": "vscode.open",
+          "when": "view == docusaurusExplorer && viewItem == imageFile",
+          "group": "image@1"
+        },
+        {
+          "command": "docusaurus-editor.addImage",
+          "when": "view == docusaurusExplorer && viewItem == imagesFolder",
+          "group": "image@1"
         }
       ],
       "editor/title": [

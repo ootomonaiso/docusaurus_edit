@@ -54,8 +54,18 @@ export class FileStatsProvider implements vscode.TreeDataProvider<FileStatsTreeI
 
 	private fileStats: Map<string, FileStats> = new Map();
 
+	private disposables: vscode.Disposable[] = [];
+
 	constructor(private docusaurusRoot: string, private contentType: 'docs' | 'blog' = 'docs') {
 		this.refreshStats();
+		
+		// エディタ関連のイベントリスナーを設定
+		this.disposables.push(
+			vscode.window.onDidChangeActiveTextEditor(() => this.refresh()),
+			vscode.window.onDidChangeVisibleTextEditors(() => this.refresh()),
+			vscode.workspace.onDidOpenTextDocument(() => this.refresh()),
+			vscode.workspace.onDidCloseTextDocument(() => this.refresh())
+		);
 	}
 
 	refresh(): void {
@@ -74,8 +84,8 @@ export class FileStatsProvider implements vscode.TreeDataProvider<FileStatsTreeI
 
 	getChildren(element?: FileStatsTreeItem): Promise<FileStatsTreeItem[]> {
 		if (!element) {
-			// ルートレベル - ファイル一覧を返す
-			return Promise.resolve(this.getFileList());
+			// ルートレベル - 現在開いているファイルのみを返す
+			return Promise.resolve(this.getOpenFileList());
 		} else if (element.stats && !element.isStatsItem) {
 			// ファイルノード - 統計情報を返す
 			return Promise.resolve(this.getStatsForFile(element.stats));
@@ -98,6 +108,78 @@ export class FileStatsProvider implements vscode.TreeDataProvider<FileStatsTreeI
 		}
 
 		return items.sort((a, b) => a.label.localeCompare(b.label));
+	}
+
+	private getOpenFileList(): FileStatsTreeItem[] {
+		const items: FileStatsTreeItem[] = [];
+		
+		// 現在開いているすべてのエディタを取得
+		const openEditors = vscode.window.visibleTextEditors;
+		const processedFiles = new Set<string>();
+
+		// アクティブエディタを最初に追加
+		const activeEditor = vscode.window.activeTextEditor;
+		if (activeEditor && this.isMarkdownFile(activeEditor.document.fileName)) {
+			const stats = this.getStatsForActiveEditor();
+			if (stats) {
+				const item = new FileStatsTreeItem(
+					stats.fileName,
+					vscode.TreeItemCollapsibleState.Collapsed,
+					stats,
+					false
+				);
+				items.push(item);
+				processedFiles.add(activeEditor.document.fileName);
+			}
+		}
+
+		// その他の開いているMarkdownファイルを追加
+		for (const editor of openEditors) {
+			if (!processedFiles.has(editor.document.fileName) && 
+				this.isMarkdownFile(editor.document.fileName)) {
+				
+				// リアルタイムで統計を計算
+				const content = editor.document.getText();
+				const contentWithoutFrontmatter = this.removeFrontmatter(content);
+				
+				const charCount = contentWithoutFrontmatter.length;
+				const wordCount = this.countWords(contentWithoutFrontmatter);
+				const lineCount = content.split('\n').length;
+				const readingTime = this.calculateReadingTime(contentWithoutFrontmatter, wordCount);
+
+				const stats: FileStats = {
+					filePath: editor.document.fileName,
+					fileName: path.basename(editor.document.fileName),
+					charCount,
+					wordCount,
+					lineCount,
+					readingTime,
+					lastModified: new Date(),
+					fileSize: Buffer.byteLength(content, 'utf8')
+				};
+
+				const item = new FileStatsTreeItem(
+					stats.fileName,
+					vscode.TreeItemCollapsibleState.Collapsed,
+					stats,
+					false
+				);
+				items.push(item);
+				processedFiles.add(editor.document.fileName);
+			}
+		}
+
+		// 開いているファイルがない場合のメッセージ
+		if (items.length === 0) {
+			items.push(new FileStatsTreeItem(
+				'Markdownファイルが開かれていません',
+				vscode.TreeItemCollapsibleState.None,
+				undefined,
+				true
+			));
+		}
+
+		return items;
 	}
 
 	private getStatsForFile(stats: FileStats): FileStatsTreeItem[] {
@@ -255,6 +337,11 @@ export class FileStatsProvider implements vscode.TreeDataProvider<FileStatsTreeI
 		const i = Math.floor(Math.log(bytes) / Math.log(k));
 		
 		return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+	}
+
+	// リソースを解放
+	public dispose() {
+		this.disposables.forEach(d => d.dispose());
 	}
 
 	// 現在選択されているファイルの統計を取得

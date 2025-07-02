@@ -300,6 +300,64 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	console.log('📝 Creating Markdown Template Provider');
 	const markdownTemplateProvider = new MarkdownTemplateProvider();
 	
+	// Register image add command
+	const addImageCommand = vscode.commands.registerCommand('docusaurus-editor.addImage', async (item: any) => {
+		// 画像追加処理
+		if (!item || !item.filePath) {
+			vscode.window.showErrorMessage('有効な画像フォルダが選択されていません');
+			return;
+		}
+
+		// 仮想Imagesフォルダの場合、実際のフォルダパスを取得
+		let targetFolder = item.filePath;
+		if (targetFolder.endsWith('__images__')) {
+			// 実際のフォルダパス（__images__の親フォルダ）を取得
+			targetFolder = path.dirname(targetFolder);
+		}
+		
+		// ファイル選択ダイアログを表示
+		const options: vscode.OpenDialogOptions = {
+			canSelectMany: false,
+			openLabel: '画像を選択',
+			filters: {
+				'Images': ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'ico']
+			}
+		};
+		
+		const fileUri = await vscode.window.showOpenDialog(options);
+		if (fileUri && fileUri[0]) {
+			// ファイル名を保持
+			const fileName = path.basename(fileUri[0].fsPath);
+			const targetPath = path.join(targetFolder, fileName);
+			
+			try {
+				// ファイルが既に存在するかチェック
+				if (fs.existsSync(targetPath)) {
+					const overwrite = await vscode.window.showWarningMessage(
+						`${fileName}は既に存在します。上書きしますか？`,
+						'はい',
+						'いいえ'
+					);
+					if (overwrite !== 'はい') {
+						return;
+					}
+				}
+				
+				// ファイルコピー
+				fs.copyFileSync(fileUri[0].fsPath, targetPath);
+				vscode.window.showInformationMessage(`画像${fileName}を追加しました`);
+				
+				// ツリービューを更新
+				if (treeDataProvider) {
+					treeDataProvider.refresh();
+				}
+			} catch (error) {
+				console.error('Error copying image file:', error);
+				vscode.window.showErrorMessage(`画像の追加に失敗しました: ${error}`);
+			}
+		}
+	});
+	
 	// Register Markdown template commands
 	const insertHeadingCommand = vscode.commands.registerCommand('docusaurus-editor.insertHeading', async () => {
 		await markdownTemplateProvider.insertHeading();
@@ -455,6 +513,7 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		switchToDocsCommand,
 		switchToBlogCommand,
 		toggleContentTypeCommand,
+		addImageCommand,
 		insertHeadingCommand,
 		insertListCommand,
 		insertCodeBlockCommand,
@@ -570,6 +629,9 @@ export function deactivate() {
 	}
 	if (statusBarItem) {
 		statusBarItem.dispose();
+	}
+	if (fileStatsProvider) {
+		fileStatsProvider.dispose();
 	}
 	console.log('Docusaurus Editor extension deactivated');
 }
