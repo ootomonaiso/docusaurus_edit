@@ -27,7 +27,12 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
         try {
             // まず、ラベルだけで初期化（最低限の表示を保証）
             super(docItem.label, collapsibleState);
-            
+
+            // ポジション番号をラベルに追加
+            if (docItem.position !== undefined) {
+                this.label = `${docItem.position}. ${docItem.label}`;
+            }
+
             // 実際のファイルパスが存在する場合はresourceUriを設定
             if (docItem.filePath && fs.existsSync(docItem.filePath)) {
                 if (docItem.type === 'file') {
@@ -41,7 +46,7 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
                 } else if (docItem.type === 'folder' && !this.isImageFolder(docItem.label)) {
                     // 通常のフォルダの場合はresourceUriを設定
                     this.resourceUri = vscode.Uri.file(docItem.filePath);
-                    
+
                     // カテゴリフォルダの場合はカスタムラベルを使用
                     const categoryConfigPath = path.join(docItem.filePath, '_category_.json');
                     if (fs.existsSync(categoryConfigPath)) {
@@ -62,11 +67,12 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
             console.error(`❌ Error creating TreeItem for ${docItem.label}:`, err);
             super(docItem.label || "Unknown Item", collapsibleState);
         }
-        
+
         // ツールチップと説明を設定
         this.tooltip = docItem.title || docItem.label;
-        this.description = (docItem.position && docItem.type !== 'image') ? `pos: ${docItem.position}` : '';
-        
+        // Remove seconds and character count from the description
+        this.description = '';
+
         // コンテキスト値とコマンドをアイテムタイプに基づいて設定
         if (docItem.type === 'file') {
             this.command = {
@@ -95,24 +101,28 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
                 this.contextValue = isCategory ? 'docCategory' : 'docFolder';
             }
         }
-        
+
         // アイコンを最後に設定（resourceUriによる自動アイコンを上書き）
         this.setCustomIcon(docItem);
     }
-    
+
     private setCustomIcon(docItem: DocItem): void {
         if (docItem.type === 'file') {
-            // Markdownファイルのアイコン（互換性を考慮）
-            this.iconPath = new vscode.ThemeIcon('file-text');
+            // Markdownファイルのアイコン（テーマカラーを適用）
+            if (docItem.filePath.endsWith('.md') || docItem.filePath.endsWith('.mdx')) {
+                this.iconPath = new vscode.ThemeIcon('markdown', new vscode.ThemeColor('icon.foreground'));
+            } else {
+                this.iconPath = new vscode.ThemeIcon('file-text');
+            }
         } else if (docItem.type === 'image') {
-            // 画像ファイルのアイコン（互換性を考慮）
-            this.iconPath = new vscode.ThemeIcon('file-media');
+            // 画像ファイルのアイコン（テーマカラーを適用）
+            this.iconPath = new vscode.ThemeIcon('file-media', new vscode.ThemeColor('icon.foreground'));
         } else if (this.isImageFolder(docItem.label)) {
             // イメージフォルダも普通のフォルダと同じアイコン
-            this.iconPath = new vscode.ThemeIcon('folder');
+            this.iconPath = new vscode.ThemeIcon('folder', new vscode.ThemeColor('icon.foreground'));
         } else {
             // 通常のフォルダまたはカテゴリフォルダも全て同じアイコン
-            this.iconPath = new vscode.ThemeIcon('folder');
+            this.iconPath = new vscode.ThemeIcon('folder', new vscode.ThemeColor('icon.foreground'));
         }
     }
 }

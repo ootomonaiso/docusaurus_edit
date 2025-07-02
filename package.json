@@ -45,6 +45,12 @@
           "name": "ドキュサウルスエクスプローラー",
           "when": "docusaurus.enabled",
           "icon": "$(file-directory)"
+        },
+        {
+          "id": "docusaurusFileStats",
+          "name": "ファイル統計",
+          "when": "docusaurus.enabled",
+          "icon": "$(graph)"
         }
       ]
     },
@@ -178,6 +184,20 @@
         "command": "docusaurus-editor.insertImage",
         "title": "画像を挿入",
         "icon": "$(file-media)"
+      },
+      {
+        "command": "vscode.open",
+        "title": "Open File"
+      },
+      {
+        "command": "docusaurus-editor.deleteFolder",
+        "title": "フォルダを削除",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "docusaurus-editor.deleteFile",
+        "title": "ファイルを削除",
+        "icon": "$(trash)"
       }
     ],
     "submenus": [
@@ -264,6 +284,16 @@
           "command": "docusaurus-editor.deleteImageFolder",
           "when": "view == docusaurusExplorer && viewItem == imagesFolder",
           "group": "image@2"
+        },
+        {
+          "command": "docusaurus-editor.deleteFolder",
+          "when": "view == docusaurusExplorer && viewItem == docFolder",
+          "group": "delete@1"
+        },
+        {
+          "command": "docusaurus-editor.deleteFile",
+          "when": "view == docusaurusExplorer && viewItem == docFile",
+          "group": "delete@2"
         }
       ],
       "editor/title": [
@@ -318,6 +348,23 @@
         {
           "command": "docusaurus-editor.insertImage",
           "group": "advanced@4"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "docusaurus-editor.deleteFolder",
+          "group": "navigation@2",
+          "when": "resourceType == 'folder'"
+        },
+        {
+          "command": "docusaurus-editor.deleteFile",
+          "group": "navigation@2",
+          "when": "resourceType == 'file'"
+        },
+        {
+          "command": "docusaurus-editor.createNewDoc",
+          "group": "navigation@1",
+          "when": "resourceType == 'folder'"
         }
       ]
     },
