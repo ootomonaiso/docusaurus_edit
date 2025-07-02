@@ -30,7 +30,7 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
 
             // ポジション番号をラベルに追加
             if (docItem.position !== undefined) {
-                this.label = `${docItem.position}. ${docItem.label}`;
+                this.label = docItem.label; // ポジション番号を削除
             }
 
             // 実際のファイルパスが存在する場合はresourceUriを設定
