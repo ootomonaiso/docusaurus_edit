@@ -1,0 +1,39 @@
+name: "Code Quality"
+
+on:
+  pull_request:
+    branches: [ master, main ]
+  push:
+    branches: [ master, main ]
+
+jobs:
+  lint-and-format:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run ESLint
+      run: npm run lint
+    
+    - name: Check TypeScript compilation
+      run: npm run compile
+    
+    - name: Check for TypeScript errors
+      run: npx tsc --noEmit
+    
+    - name: Package extension (dry run)
+      run: |
+        npm install -g @vscode/vsce
+        vsce package --out test.vsix
+        ls -la *.vsix

@@ -1,0 +1,103 @@
+name: "Build and Release"
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run linter
+      run: npm run lint
+    
+    - name: Compile TypeScript
+      run: npm run compile
+    
+    - name: Run tests
+      run: npm test
+      env:
+        DISPLAY: ':99.0'
+    
+    - name: Install vsce
+      run: npm install -g @vscode/vsce
+    
+    - name: Package extension
+      run: |
+        vsce package --out docusaurus-editor-$(node -p "require('./package.json').version").vsix
+    
+    - name: Upload VSIX artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: extension-vsix
+        path: '*.vsix'
+        retention-days: 30
+    
+    - name: Get version from package.json
+      id: get_version
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+        echo "version=v$VERSION" >> $GITHUB_OUTPUT
+        echo "Extension version: v$VERSION"
+    
+    - name: Check if tag exists
+      id: check_tag
+      run: |
+        if git rev-parse "${{ steps.get_version.outputs.version }}" >/dev/null 2>&1; then
+          echo "tag_exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "tag_exists=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Create Release
+      if: steps.check_tag.outputs.tag_exists == 'false'
+      uses: softprops/action-gh-release@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.version }}
+        name: Release ${{ steps.get_version.outputs.version }}
+        body: |
+          ## Docusaurus Editor ${{ steps.get_version.outputs.version }}
+          
+          ### 新機能・改善
+          - 最新の変更内容をここに記載してください
+          
+          ### バグ修正
+          - 修正されたバグをここに記載してください
+          
+          ### インストール方法
+          1. リリースから `.vsix` ファイルをダウンロード
+          2. VS Code で `Extensions: Install from VSIX...` コマンドを実行
+          3. ダウンロードした `.vsix` ファイルを選択
+          
+          または、VS Code マーケットプレースからインストールしてください。
+        draft: false
+        prerelease: false
+        files: |
+          *.vsix
+    
+    # オプション: VS Code マーケットプレースに自動公開
+    # - name: Publish to VS Code Marketplace
+    #   if: steps.check_tag.outputs.tag_exists == 'false'
+    #   run: vsce publish
+    #   env:
+    #     VSCE_PAT: ${{ secrets.VSCE_PAT }}

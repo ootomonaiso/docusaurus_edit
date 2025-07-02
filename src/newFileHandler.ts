@@ -4,7 +4,14 @@ import * as path from 'path';
 import matter from 'gray-matter';
 
 export class NewFileHandler {
-    constructor(private workspaceRoot: string) {}
+    constructor(private workspaceRoot: string, private contentType: 'docs' | 'blog' = 'docs') {}
+
+    /**
+     * コンテンツタイプを設定
+     */
+    setContentType(contentType: 'docs' | 'blog'): void {
+        this.contentType = contentType;
+    }
 
     async createNewDocument(targetFolder?: string): Promise<void> {
         try {
@@ -20,8 +27,32 @@ export class NewFileHandler {
                 return;
             }
 
-            // Create the file
-            const filePath = path.join(folderPath, `${docInfo.filename}.md`);
+            // Create the file with appropriate naming
+            let filePath: string;
+            let frontmatter: any;
+            
+            if (this.contentType === 'blog') {
+                // Blog posts use date-based naming
+                const today = new Date();
+                const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
+                filePath = path.join(folderPath, `${dateString}-${docInfo.filename}.md`);
+                
+                frontmatter = {
+                    title: docInfo.title,
+                    date: today.toISOString(),
+                    authors: [docInfo.author || 'default'],
+                    tags: docInfo.tags || ['general'],
+                    description: docInfo.description || `${docInfo.title}について説明します。`
+                };
+            } else {
+                // Docs use standard naming
+                filePath = path.join(folderPath, `${docInfo.filename}.md`);
+                frontmatter = {
+                    id: docInfo.id,
+                    title: docInfo.title,
+                    sidebar_position: docInfo.position
+                };
+            }
             
             if (fs.existsSync(filePath)) {
                 const overwrite = await vscode.window.showQuickPick(['Yes', 'No'], {
@@ -33,12 +64,6 @@ export class NewFileHandler {
             }
 
             // Create content with frontmatter
-            const frontmatter = {
-                id: docInfo.id,
-                title: docInfo.title,
-                sidebar_position: docInfo.position
-            };
-
             const content = this.createTemplateContent(docInfo.title, docInfo.template);
             const fullContent = matter.stringify(content, frontmatter);
 
@@ -49,7 +74,8 @@ export class NewFileHandler {
             const document = await vscode.workspace.openTextDocument(filePath);
             await vscode.window.showTextDocument(document);
 
-            vscode.window.showInformationMessage(`Created: ${docInfo.filename}.md`);
+            const fileName = path.basename(filePath);
+            vscode.window.showInformationMessage(`Created: ${fileName}`);
 
             // Refresh tree view
             vscode.commands.executeCommand('docusaurus-editor.refreshExplorer');
@@ -127,11 +153,14 @@ export class NewFileHandler {
         title: string;
         position: number;
         template: string;
+        author?: string;
+        tags?: string[];
+        description?: string;
     } | undefined> {
         // Get title
         const title = await vscode.window.showInputBox({
-            prompt: 'Enter document title',
-            placeHolder: 'My New Document'
+            prompt: `Enter ${this.contentType === 'blog' ? 'blog post' : 'document'} title`,
+            placeHolder: this.contentType === 'blog' ? 'My New Blog Post' : 'My New Document'
         });
 
         if (!title) {
@@ -148,12 +177,44 @@ export class NewFileHandler {
         // Select template
         const template = await this.selectTemplate();
 
+        let author: string | undefined;
+        let tags: string[] | undefined;
+        let description: string | undefined;
+
+        // Get blog-specific fields if creating a blog post
+        if (this.contentType === 'blog') {
+            // Get author
+            author = await vscode.window.showInputBox({
+                prompt: 'Enter author name',
+                placeHolder: 'author-name'
+            });
+
+            // Get tags
+            const tagsInput = await vscode.window.showInputBox({
+                prompt: 'Enter tags (comma-separated)',
+                placeHolder: 'tag1, tag2, tag3'
+            });
+            
+            if (tagsInput) {
+                tags = tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+            }
+
+            // Get description
+            description = await vscode.window.showInputBox({
+                prompt: 'Enter description (optional)',
+                placeHolder: 'Brief description of the blog post'
+            });
+        }
+
         return {
             filename,
             id,
             title,
             position,
-            template
+            template,
+            author,
+            tags,
+            description
         };
     }
 

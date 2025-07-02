@@ -1,97 +1,133 @@
 # Docusaurus Editor
 
-A VS Code extension for editing Docusaurus documentation with enhanced productivity features.
+生産性を向上させる機能を備えた、Docusaurus ドキュメント編集用の VS Code 拡張機能です。
 
-## Features
+## 機能
 
-### 🌳 Tree View Explorer
-- Display Docusaurus documentation structure in a dedicated tree view
-- Show documents sorted by `sidebar_position` and `_category_.json` position
-- Navigate quickly through your documentation hierarchy
+### 🌳 ツリービューエクスプローラー
+- 専用のツリービューで Docusaurus ドキュメント構造を表示
+- **ドキュメント・ブログ切り替え対応** - docs と blog フォルダーを個別に管理
+- `sidebar_position` と `_category_.json` の位置でソートされたドキュメントを表示
+- ドキュメント階層を素早くナビゲート
+- ワンクリックでドキュメント/ブログビューを切り替え
 
-### 📝 Document Management
-- Create new markdown documents with pre-built templates
-- Automatic frontmatter generation with proper `sidebar_position`
-- Support for multiple document templates (Basic, Tutorial, API Reference, Guide)
+### 📝 ドキュメント・ブログ管理
+- 事前構築されたテンプレートで新しい Markdown ドキュメント・ブログ記事を作成
+- docs と blog 両方のコンテンツタイプに対応
+- 適切な `sidebar_position` を持つ自動フロントマター生成
+- 複数のドキュメントテンプレートをサポート（基本、チュートリアル、API リファレンス、ガイド）
 
-### 🔄 Drag & Drop Reordering
-- Reorder documents and folders by dragging and dropping
-- Automatic `sidebar_position` and `_category_.json` position updates
-- Visual feedback during drag operations
+### 🔄 ドラッグ＆ドロップ並び替え
+- ドラッグ＆ドロップでドキュメントとフォルダーを並び替え
+- `sidebar_position` と `_category_.json` の位置の自動更新
+- ドラッグ操作中の視覚的フィードバック
 
-### 🔗 Git Integration
-- One-click commit and push operations
-- Automatic pull request creation for GitHub repositories
-- Git status display in the tree view
+### 🔗 Git 統合
+- ワンクリックでのコミット・プッシュ操作
+- GitHub リポジトリ用の自動プルリクエスト作成
+- ツリービューでの Git ステータス表示
 
-## Requirements
+### 💡 Docusaurus Markdown 補完
+- Docusaurus 特有の記法（Admonition、Tabs、CodeBlock など）の自動補完
+- MDX コンポーネントのスニペット補完
+- インポート文の自動補完
 
-- VS Code 1.101.0 or higher
-- A Docusaurus project (detected by `docusaurus.config.js/ts` or `@docusaurus/*` dependencies)
-- Git repository (for Git integration features)
+### 👁️ ライブプレビュー
+- Docusaurus スタイルのリアルタイムプレビュー
+- Admonition、Tabs、CodeBlock の正確な表示
+- エディター変更時の自動更新
 
-## Getting Started
+### 📁 カテゴリ管理（ドキュメント・ブログ対応）
+- **ドキュメント・ブログ両方に対応** - 選択したコンテンツタイプに応じてカテゴリを管理
+- 新しいカテゴリ（フォルダ）の作成
+- `_category_.json` ファイルの自動生成
+- カテゴリ設定の編集（表示名、位置、説明）
+- カテゴリの削除
+- カテゴリとフォルダの視覚的区別
 
-1. Open your Docusaurus project in VS Code
-2. The extension will automatically activate when a Docusaurus project is detected
-3. Use the "Docusaurus Explorer" view in the Explorer panel
-4. Right-click on folders to create new documents
-5. Drag and drop to reorder items
+## 要件
 
-## Extension Settings
+- VS Code 1.101.0 以上
+- Docusaurus プロジェクト（`docusaurus.config.js/ts` または `@docusaurus/*` 依存関係で検出）
+- Git リポジトリ（Git 統合機能を使用する場合）
 
-This extension contributes the following settings:
+## はじめに
 
-* `docusaurus-editor.enabled`: Enable/disable the extension (automatically set based on project detection)
+1. VS Code で Docusaurus プロジェクトを開く
+2. Docusaurus プロジェクトが検出されると、拡張機能が自動的にアクティブになります
+3. エクスプローラーパネルの「Docusaurus Explorer」ビューを使用
+4. フォルダーを右クリックして新しいドキュメントを作成
+5. ドラッグ＆ドロップでアイテムを並び替え
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## 機能の使用方法
 
-For example:
+### ドキュメント・ブログビューの切り替え
+1. **ツリービューの切り替え**:
+   - ツリービューのタイトルバーの切り替えアイコン（⚡）をクリック
+   - または、コマンドパレット（Ctrl+Shift+P）で「ドキュメント/ブログ切り替え」を実行
+   - ドキュメントビュー（📚 Docs Explorer）とブログビュー（📝 Blog Explorer）を切り替え
 
-This extension contributes the following settings:
+2. **個別切り替えコマンド**:
+   - 「ドキュメントビューに切り替え」: docs フォルダのコンテンツを表示
+   - 「ブログビューに切り替え」: blog フォルダのコンテンツを表示
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+### Markdown 補完機能
+Markdown ファイルまたは MDX ファイルで以下の補完機能を利用できます：
 
-## Known Issues
+1. **Admonition（警告ボックス）**: `:::` と入力すると自動補完メニューが表示
+2. **Tabs**: `<Tabs>` または `<TabItem>` と入力すると補完
+3. **Code Blocks**: ``````` と入力すると言語とタイトル付きコードブロックの補完
+4. **Import 文**: `import ` と入力すると Docusaurus コンポーネントのインポート補完
+5. **MDX Components**: `<` と入力すると MDX コンポーネントの補完
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+### プレビュー機能
+1. Markdown/MDX ファイルを開く
+2. エディターのタイトルバーのプレビューアイコンをクリック
+3. または、右クリックメニューから「Docusaurus プレビューを表示」を選択
+4. Docusaurus スタイルでレンダリングされたプレビューが隣に表示されます
 
-## Release Notes
+### カテゴリ管理機能（ドキュメント・ブログ対応）
+1. **新しいカテゴリの作成**:
+   - 現在のビュー（docs または blog）に応じてカテゴリを作成
+   - ツリービューのタイトルバーのフォルダアイコンをクリック
+   - または、フォルダを右クリック → 「新しいカテゴリを作成」
+   - カテゴリ名、表示名、位置を設定
 
-Users appreciate release notes as you update your extension.
+2. **カテゴリ設定の編集**:
+   - カテゴリフォルダ（ライブラリアイコン）を右クリック
+   - 「カテゴリ設定を編集」を選択
+   - 表示名、位置、説明を変更可能
+   - 選択されたコンテンツタイプに応じて適切なUI表示
+
+3. **カテゴリの削除**:
+   - カテゴリフォルダを右クリック → 「カテゴリを削除」
+   - 確認ダイアログでフォルダとその中身を完全削除
+
+## 拡張機能の設定
+
+この拡張機能は以下の設定を提供します：
+
+* `docusaurus-editor.enabled`: 拡張機能の有効/無効を切り替え（プロジェクト検出に基づいて自動設定）
+
+## 既知の問題
+
+- 大きなプロジェクトでは初回読み込みに時間がかかる場合があります
+- ドラッグ&ドロップ時に一時的にツリービューが更新される場合があります
+
+## リリースノート
 
 ### 1.0.0
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+- 初回リリース
+- ドキュメント・ブログ管理機能
+- カテゴリ管理機能
+- プレビュー機能
+- Git統合機能
 
 ---
 
-## Following extension guidelines
+## 開発者向け情報
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+この拡張機能は [VS Code Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines) に従って開発されています。
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+**お楽しみください！**

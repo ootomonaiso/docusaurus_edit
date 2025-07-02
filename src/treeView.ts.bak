@@ -1,0 +1,470 @@
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as matter from 'gray-matter';
+
+export interface DocItem {
+    label: string;
+    type: 'file' | 'folder' | 'image';
+    filePath: string;
+    position?: number;
+    id?: string;
+    title?: string;
+    children?: DocItem[];
+}
+
+export class DocusaurusTreeItem extends vscode.TreeItem {
+    constructor(
+        public readonly docItem: DocItem,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState
+    ) {
+        super(docItem.label, collapsibleState);
+        
+        this.tooltip = docItem.title || docItem.label;
+        // Only show position for files and folders, not images
+        this.description = (docItem.position && docItem.type !== 'image') ? `pos: ${docItem.position}` : '';
+        
+        if (docItem.type === 'file') {
+            this.command = {
+                command: 'vscode.open',
+                title: 'Open',
+                arguments: [vscode.Uri.file(docItem.filePath)]
+            };
+            this.contextValue = 'docFile';
+            this.iconPath = new vscode.ThemeIcon('markdown');
+        } else if (docItem.type === 'image') {
+            this.command = {
+                command: 'vscode.open',
+                title: 'Open Image',
+                arguments: [vscode.Uri.file(docItem.filePath)]
+            };
+            this.contextValue = 'imageFile';
+            this.iconPath = new vscode.ThemeIcon('file-media');
+        } else {
+            // Check if folder is a category (has _category_.json) or Images folder
+            if (docItem.label.startsWith('Images (')) {
+                this.contextValue = 'imagesFolder';
+                this.iconPath = new vscode.ThemeIcon('images');
+            } else {
+                const categoryConfigPath = path.join(docItem.filePath, '_category_.json');
+                const isCategory = fs.existsSync(categoryConfigPath);
+                
+                this.contextValue = isCategory ? 'docCategory' : 'docFolder';
+                this.iconPath = isCategory 
+                    ? new vscode.ThemeIcon('folder-library') 
+                    : new vscode.ThemeIcon('folder');
+            }
+        }
+    }
+}
+
+export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocItem> {
+    private _onDidChangeTreeData: vscode.EventEmitter<DocItem | undefined | null | void> = new vscode.EventEmitter<DocItem | undefined | null | void>();
+    readonly onDidChangeTreeData: vscode.Event<DocItem | undefined | null | void> = this._onDidChangeTreeData.event;
+
+    private docsPaths: string[] = [];
+    private blogPaths: string[] = [];
+    private currentContentType: 'docs' | 'blog' = 'docs';
+
+    constructor(private workspaceRoot: string) {
+        console.log('🌳 DocusaurusTreeDataProvider constructor called with:', workspaceRoot);
+        this.refresh();
+    }
+
+    setContentType(contentType: 'docs' | 'blog'): void {
+        this.currentContentType = contentType;
+        console.log(`📝 Content type changed to: ${contentType}`);
+    }
+
+    getCurrentContentType(): 'docs' | 'blog' {
+        return this.currentContentType;
+    }
+
+    refresh(): void {
+        console.log('🔄 Refreshing tree data provider');
+        this.loadDocusaurusConfig();
+        this._onDidChangeTreeData.fire();
+        console.log('🔄 Tree data refreshed, docsPaths:', this.docsPaths);
+    }
+
+    getTreeItem(element: DocItem): vscode.TreeItem {
+        return new DocusaurusTreeItem(element, 
+            element.children && element.children.length > 0 
+                ? vscode.TreeItemCollapsibleState.Collapsed 
+                : vscode.TreeItemCollapsibleState.None);
+    }
+
+    getChildren(element?: DocItem): Thenable<DocItem[]> {
+        if (!this.workspaceRoot) {
+            console.log('No workspace root.');
+            return Promise.resolve([]);
+        }
+
+        if (element) {
+            return Promise.resolve(this.getDocItemChildren(element));
+        } else {
+            const contentType = this.currentContentType;
+            console.log(`Getting top-level ${contentType} children`);
+            
+            // Get paths based on content type
+            const paths = contentType === 'docs' ? this.docsPaths : this.blogPaths;
+            
+            if (!paths.length) {
+                console.log(`No ${contentType} paths found. Refresh or set paths first.`);
+                return Promise.resolve([]);
+            }
+
+            // Create root entries for all doc paths
+            const rootItems: DocItem[] = [];
+            for (const docPath of paths) {
+                console.log(`Processing ${contentType} path:`, docPath);
+                const items = this.getDocItemsFromPath(docPath);
+                
+                // If the path is directly the workspace root, add all items directly
+                if (docPath === this.workspaceRoot) {
+                    rootItems.push(...items);
+                } else {
+                    // Otherwise, add the path as a virtual folder with its items as children
+                    const folderName = path.basename(docPath);
+                    const virtualFolder: DocItem = {
+                        label: folderName,
+                        type: 'folder',
+                        filePath: docPath,
+                        children: items
+                    };
+                    rootItems.push(virtualFolder);
+                }
+            }
+            
+            // Sort root items (folders first, then by name)
+            rootItems.sort((a, b) => {
+                // Folders first
+                if (a.type === 'folder' && b.type !== 'folder') {
+                    return -1;
+                }
+                if (a.type !== 'folder' && b.type === 'folder') {
+                    return 1;
+                }
+                
+                // Then by name
+                return a.label.localeCompare(b.label);
+            });
+            
+            console.log(`Returning ${rootItems.length} root items`);
+            return Promise.resolve(rootItems);
+        }
+    }
+
+    private getDocItemChildren(element: DocItem): DocItem[] {
+        if (element.children) {
+            return element.children;
+        }
+        
+        console.log(`Getting children for ${element.type} ${element.label}`);
+        
+        if (element.type === 'folder') {
+            return this.getDocItemsFromPath(element.filePath);
+        }
+        
+        return [];
+    }
+    
+    private getDocItemsFromPath(folderPath: string): DocItem[] {
+        console.log(`Getting items from path: ${folderPath}`);
+        
+        if (!fs.existsSync(folderPath) || !fs.statSync(folderPath).isDirectory()) {
+            console.log(`Path ${folderPath} doesn't exist or is not a directory`);
+            return [];
+        }
+        
+        try {
+            const entries = fs.readdirSync(folderPath);
+            console.log(`Found ${entries.length} entries in ${folderPath}`);
+            
+            const result: DocItem[] = [];
+            const imageFiles: DocItem[] = [];
+            
+            for (const entry of entries) {
+                // Skip hidden files
+                if (entry.startsWith('.')) {
+                    continue;
+                }
+                
+                const fullPath = path.join(folderPath, entry);
+                const stats = fs.statSync(fullPath);
+                
+                if (stats.isDirectory()) {
+                    // Add directories as DocItems
+                    const item: DocItem = {
+                        label: entry,
+                        type: 'folder',
+                        filePath: fullPath,
+                    };
+                    
+                    // Check for category position
+                    const categoryConfigPath = path.join(fullPath, '_category_.json');
+                    if (fs.existsSync(categoryConfigPath)) {
+                        try {
+                            const categoryConfig = JSON.parse(fs.readFileSync(categoryConfigPath, 'utf8'));
+                            if (typeof categoryConfig.position === 'number') {
+                                item.position = categoryConfig.position;
+                            }
+                            if (typeof categoryConfig.label === 'string') {
+                                item.label = categoryConfig.label;
+                            }
+                        } catch (err) {
+                            console.error(`Error parsing ${categoryConfigPath}:`, err);
+                        }
+                    }
+                    
+                    result.push(item);
+                } else if (stats.isFile()) {
+                    const ext = path.extname(entry).toLowerCase();
+                    
+                    // Check if it's an image file
+                    if (['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp'].includes(ext)) {
+                        imageFiles.push({
+                            label: entry,
+                            type: 'image',
+                            filePath: fullPath,
+                        });
+                        continue; // Skip to next entry
+                    }
+                    
+                    // Handle markdown files
+                    if (ext === '.md' || ext === '.mdx') {
+                        let position = undefined;
+                        let title = undefined;
+                        let id = undefined;
+                        
+                        try {
+                            const content = fs.readFileSync(fullPath, 'utf8');
+                            const { data } = matter(content);
+                            
+                            if (typeof data.sidebar_position === 'number') {
+                                position = data.sidebar_position;
+                            }
+                            
+                            if (typeof data.title === 'string') {
+                                title = data.title;
+                            }
+                            
+                            if (typeof data.id === 'string') {
+                                id = data.id;
+                            }
+                        } catch (err) {
+                            console.error(`Error reading frontmatter for ${fullPath}:`, err);
+                        }
+                        
+                        const item: DocItem = {
+                            label: entry.replace(/\.mdx?$/, ''), // Remove extension from label
+                            type: 'file',
+                            filePath: fullPath,
+                            position: position,
+                            id: id,
+                            title: title
+                        };
+                        
+                        result.push(item);
+                    }
+                }
+            }
+            
+            // If we have image files, add them to a special virtual folder
+            if (imageFiles.length > 0) {
+                result.push({
+                    label: `Images (${imageFiles.length})`,
+                    type: 'folder',
+                    filePath: folderPath, // Store the parent path for context
+                    children: imageFiles.sort((a, b) => a.label.localeCompare(b.label))
+                });
+            }
+            
+            // Sort by position, then by name
+            return result.sort((a, b) => {
+                // Sort by position first
+                if (a.position !== undefined && b.position !== undefined) {
+                    return a.position - b.position;
+                }
+                
+                // Items with position come first
+                if (a.position !== undefined && b.position === undefined) {
+                    return -1;
+                }
+                
+                if (a.position === undefined && b.position !== undefined) {
+                    return 1;
+                }
+                
+                // Folders first for entries without position
+                if (a.type === 'folder' && b.type !== 'folder') {
+                    return -1;
+                }
+                if (a.type !== 'folder' && b.type === 'folder') {
+                    return 1;
+                }
+                
+                // Finally, sort by label
+                return a.label.localeCompare(b.label);
+            });
+            
+        } catch (err) {
+            console.error(`Error reading directory ${folderPath}:`, err);
+            return [];
+        }
+    }
+
+    private loadDocusaurusConfig(): void {
+        // Reset paths
+        this.docsPaths = [];
+        this.blogPaths = [];
+        
+        console.log('🔄 Loading Docusaurus config from:', this.workspaceRoot);
+        
+        // Common folder names
+        const commonDocsFolders = ['docs', 'documentation', 'doc', 'documents'];
+        const commonBlogFolders = ['blog', 'blogs'];
+        
+        // Look for docusaurus.config.js or docusaurus.config.ts
+        const configPaths = [
+            path.join(this.workspaceRoot, 'docusaurus.config.js'),
+            path.join(this.workspaceRoot, 'docusaurus.config.ts'),
+        ];
+        
+        // Try to find the config file
+        let configPath = null;
+        for (const p of configPaths) {
+            if (fs.existsSync(p)) {
+                configPath = p;
+                console.log('📄 Found Docusaurus config at:', configPath);
+                break;
+            }
+        }
+        
+        // If config found, try to extract paths from it
+        if (configPath) {
+            try {
+                const content = fs.readFileSync(configPath, 'utf8');
+                
+                // Parse docs path using regex - this is a simple heuristic
+                const docsRegex = /path\s*:\s*['"](.*?)['"]/g;
+                const matches = [...content.matchAll(docsRegex)];
+                
+                // If we found potential path matches in the config
+                if (matches.length > 0) {
+                    for (const match of matches) {
+                        const potentialPath = path.join(this.workspaceRoot, match[1]);
+                        
+                        if (fs.existsSync(potentialPath) && fs.statSync(potentialPath).isDirectory()) {
+                            // Try to determine if it's docs or blog
+                            if (potentialPath.includes('blog') || potentialPath.includes('blogs')) {
+                                console.log('🔍 Found blog path in config:', potentialPath);
+                                this.blogPaths.push(potentialPath);
+                            } else {
+                                console.log('🔍 Found docs path in config:', potentialPath);
+                                this.docsPaths.push(potentialPath);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error parsing Docusaurus config:', error);
+            }
+        }
+        
+        // Also check for folders that might contain markdown files
+        try {
+            const entries = fs.readdirSync(this.workspaceRoot, { withFileTypes: true });
+            
+            for (const entry of entries) {
+                if (entry.isDirectory() && !entry.name.startsWith('.') && !entry.name.startsWith('node_modules')) {
+                    const fullPath = path.join(this.workspaceRoot, entry.name);
+                    
+                    // Check if it's a docs folder
+                    if (commonDocsFolders.includes(entry.name)) {
+                        console.log('📁 Adding docs folder:', fullPath);
+                        this.docsPaths.push(fullPath);
+                    }
+
+                    // Check if it's a blog folder
+                    if (commonBlogFolders.includes(entry.name)) {
+                        console.log('📝 Adding blog folder:', fullPath);
+                        this.blogPaths.push(fullPath);
+                    }
+
+                    // Check for other folders that contain markdown files (but not already categorized)
+                    if (!commonDocsFolders.includes(entry.name) && !commonBlogFolders.includes(entry.name)) {
+                        if (this.containsMarkdownFiles(fullPath)) {
+                            // Determine if it's more likely docs or blog based on content
+                            if (entry.name.toLowerCase().includes('blog') || this.containsBlogFiles(fullPath)) {
+                                console.log('📝 Adding potential blog folder:', fullPath);
+                                this.blogPaths.push(fullPath);
+                            } else {
+                                console.log('📁 Adding potential docs folder:', fullPath);
+                                this.docsPaths.push(fullPath);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error searching for folders:', error);
+        }
+
+        // If still no paths found, use workspace root
+        if (this.docsPaths.length === 0) {
+            console.log('⚠️ No document folders found, using workspace root');
+            this.docsPaths.push(this.workspaceRoot);
+        }
+    }
+
+    private containsMarkdownFiles(folderPath: string): boolean {
+        try {
+            const entries = fs.readdirSync(folderPath);
+            return entries.some(entry => {
+                const ext = path.extname(entry).toLowerCase();
+                return ext === '.md' || ext === '.mdx';
+            });
+        } catch (error) {
+            console.error(`❌ Error checking for markdown files in ${folderPath}:`, error);
+            return false;
+        }
+    }
+    
+    private containsBlogFiles(folderPath: string): boolean {
+        try {
+            // Look for blog-like attributes: dates in filenames, author frontmatter, etc.
+            const entries = fs.readdirSync(folderPath);
+            
+            // Simple heuristic: check for date-prefixed filenames
+            const dateRegex = /^\d{4}-\d{2}-\d{2}/;
+            
+            return entries.some(entry => {
+                if (dateRegex.test(entry)) {
+                    return true;
+                }
+                
+                // Check a few files for author/date frontmatter
+                const ext = path.extname(entry).toLowerCase();
+                if (ext === '.md' || ext === '.mdx') {
+                    try {
+                        const content = fs.readFileSync(path.join(folderPath, entry), 'utf8');
+                        const { data } = matter(content);
+                        
+                        // Check for blog-typical frontmatter
+                        return data.author !== undefined || 
+                               data.date !== undefined || 
+                               data.tags !== undefined;
+                    } catch (err) {
+                        return false;
+                    }
+                }
+                
+                return false;
+            });
+        } catch (error) {
+            console.error(`❌ Error checking for blog files in ${folderPath}:`, error);
+            return false;
+        }
+    }
+}

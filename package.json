@@ -15,6 +15,20 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+
+    "languages": [
+      {
+        "id": "mdx",
+        "aliases": [
+          "MDX",
+          "mdx"
+        ],
+        "extensions": [
+          ".mdx"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -29,7 +43,14 @@
         {
           "id": "docusaurusExplorer",
           "name": "ドキュサウルスエクスプローラー",
-          "when": "docusaurus.enabled"
+          "when": "docusaurus.enabled",
+          "icon": "$(file-directory)"
+        },
+        {
+          "id": "docusaurusFileStats",
+          "name": "ファイル統計",
+          "when": "docusaurus.enabled",
+          "icon": "$(graph)"
         }
       ]
     },
@@ -46,7 +67,8 @@
       },
       {
         "command": "docusaurus-editor.editDoc",
-        "title": "ドキュメントを編集"
+        "title": "ドキュメントを編集",
+        "icon": "$(edit)"
       },
       {
         "command": "docusaurus-editor.gitCommit",
@@ -59,43 +81,285 @@
         "icon": "$(git-pull-request)"
       },
       {
+        "command": "docusaurus-editor.addImage",
+        "title": "画像を追加",
+        "icon": "$(file-media)"
+      },
+      {
+        "command": "docusaurus-editor.deleteImage",
+        "title": "画像を削除",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "docusaurus-editor.deleteImageFolder",
+        "title": "画像フォルダを削除",
+        "icon": "$(trash)"
+      },
+      {
         "command": "docusaurus-editor.setDocusaurusRoot",
-        "title": "Docusaurus ルートを設定"
+        "title": "Docusaurus ルートを設定",
+        "icon": "$(folder)"
       },
       {
         "command": "docusaurus-editor.enableForFolder",
-        "title": "このフォルダーで Docusaurus Editor を有効化"
+        "title": "このフォルダーで Docusaurus Editor を有効化",
+        "icon": "$(check)"
+      },
+      {
+        "command": "docusaurus-editor.showPreview",
+        "title": "Docusaurus プレビューを表示",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "docusaurus-editor.refreshPreview",
+        "title": "プレビューを更新",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "docusaurus-editor.createCategory",
+        "title": "新しいカテゴリを作成",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "docusaurus-editor.editCategory",
+        "title": "カテゴリ設定を編集",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "docusaurus-editor.deleteCategory",
+        "title": "カテゴリを削除",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "docusaurus-editor.switchToDocs",
+        "title": "ドキュメントビューに切り替え",
+        "icon": "$(book)"
+      },
+      {
+        "command": "docusaurus-editor.switchToBlog",
+        "title": "ブログビューに切り替え",
+        "icon": "$(rss)"
+      },
+      {
+        "command": "docusaurus-editor.toggleContentType",
+        "title": "ドキュメント/ブログ切り替え",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "docusaurus-editor.refreshFileStats",
+        "title": "ファイル統計を更新",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "docusaurus-editor.showOverallStats",
+        "title": "全体統計を表示",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "docusaurus-editor.showCurrentFileStats",
+        "title": "現在のファイル統計を表示",
+        "icon": "$(info)"
+      },
+      {
+        "command": "docusaurus-editor.insertHeading",
+        "title": "見出しを挿入",
+        "icon": "$(symbol-text)"
+      },
+      {
+        "command": "docusaurus-editor.insertList",
+        "title": "リストを挿入",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "docusaurus-editor.insertCodeBlock",
+        "title": "コードブロックを挿入",
+        "icon": "$(code)"
+      },
+      {
+        "command": "docusaurus-editor.insertAdmonition",
+        "title": "アドモニションを挿入",
+        "icon": "$(info)"
+      },
+      {
+        "command": "docusaurus-editor.insertTable",
+        "title": "テーブルを挿入",
+        "icon": "$(table)"
+      },
+      {
+        "command": "docusaurus-editor.insertLink",
+        "title": "リンクを挿入",
+        "icon": "$(link)"
+      },
+      {
+        "command": "docusaurus-editor.insertImage",
+        "title": "画像を挿入",
+        "icon": "$(file-media)"
+      },
+      {
+        "command": "docusaurus-editor.showStats",
+        "title": "📊 統計情報を表示",
+        "icon": "$(graph)"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "docusaurus.markdownInsert",
+        "label": "📝 Markdown記法挿入"
       }
     ],
     "menus": {
       "view/title": [
         {
+          "command": "docusaurus-editor.toggleContentType",
+          "when": "view == docusaurusExplorer",
+          "group": "navigation@0"
+        },
+        {
           "command": "docusaurus-editor.refreshExplorer",
           "when": "view == docusaurusExplorer",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
           "command": "docusaurus-editor.createNewDoc",
           "when": "view == docusaurusExplorer",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "docusaurus-editor.gitCommit",
           "when": "view == docusaurusExplorer",
-          "group": "navigation"
+          "group": "navigation@3"
+        },
+        {
+          "command": "docusaurus-editor.createCategory",
+          "when": "view == docusaurusExplorer",
+          "group": "navigation@4"
+        },
+        {
+          "command": "docusaurus-editor.refreshFileStats",
+          "when": "view == docusaurusFileStats",
+          "group": "navigation@1"
+        },
+        {
+          "command": "docusaurus-editor.showOverallStats",
+          "when": "view == docusaurusFileStats",
+          "group": "navigation@2"
+        },
+        {
+          "command": "docusaurus-editor.showCurrentFileStats",
+          "when": "view == docusaurusFileStats",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
         {
           "command": "docusaurus-editor.editDoc",
-          "when": "view == docusaurusExplorer && viewItem == docFile"
+          "when": "view == docusaurusExplorer && viewItem == docFile",
+          "group": "edit@1"
         },
         {
           "command": "docusaurus-editor.createNewDoc",
-          "when": "view == docusaurusExplorer && viewItem == docFolder"
+          "when": "view == docusaurusExplorer && viewItem == docFolder",
+          "group": "create@1"
+        },
+        {
+          "command": "docusaurus-editor.createCategory",
+          "when": "view == docusaurusExplorer && viewItem == docFolder",
+          "group": "category@1"
+        },
+        {
+          "command": "docusaurus-editor.editCategory",
+          "when": "view == docusaurusExplorer && viewItem == docCategory",
+          "group": "category@1"
+        },
+        {
+          "command": "docusaurus-editor.deleteCategory",
+          "when": "view == docusaurusExplorer && viewItem == docCategory",
+          "group": "category@2"
+        },
+        {
+          "command": "vscode.open",
+          "when": "view == docusaurusExplorer && viewItem == imageFile",
+          "group": "image@1"
+        },
+        {
+          "command": "docusaurus-editor.deleteImage",
+          "when": "view == docusaurusExplorer && viewItem == imageFile",
+          "group": "image@2"
+        },
+        {
+          "command": "docusaurus-editor.addImage",
+          "when": "view == docusaurusExplorer && viewItem == imagesFolder",
+          "group": "image@1"
+        },
+        {
+          "command": "docusaurus-editor.deleteImageFolder",
+          "when": "view == docusaurusExplorer && viewItem == imagesFolder",
+          "group": "image@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "docusaurus-editor.showPreview",
+          "when": "resourceExtname == .md || resourceExtname == .mdx",
+          "group": "navigation@1"
+        },
+        {
+          "command": "docusaurus-editor.refreshPreview",
+          "when": "resourceExtname == .md || resourceExtname == .mdx",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "docusaurus-editor.showPreview",
+          "when": "resourceExtname == .md || resourceExtname == .mdx",
+          "group": "docusaurus@1"
+        },
+        {
+          "submenu": "docusaurus.markdownInsert",
+          "when": "resourceExtname == .md || resourceExtname == .mdx",
+          "group": "docusaurus@2"
+        }
+      ],
+      "docusaurus.markdownInsert": [
+        {
+          "command": "docusaurus-editor.insertHeading",
+          "group": "basic@1"
+        },
+        {
+          "command": "docusaurus-editor.insertList",
+          "group": "basic@2"
+        },
+        {
+          "command": "docusaurus-editor.insertCodeBlock",
+          "group": "basic@3"
+        },
+        {
+          "command": "docusaurus-editor.insertAdmonition",
+          "group": "advanced@1"
+        },
+        {
+          "command": "docusaurus-editor.insertTable",
+          "group": "advanced@2"
+        },
+        {
+          "command": "docusaurus-editor.insertLink",
+          "group": "advanced@3"
+        },
+        {
+          "command": "docusaurus-editor.insertImage",
+          "group": "advanced@4"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "docusaurus-editor.showPreview",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "resourceExtname == .md || resourceExtname == .mdx"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -107,7 +371,7 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "20.x",
+    "@types/node": "^20.19.2",
     "@types/vscode": "^1.101.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
@@ -117,7 +381,11 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@types/marked": "^5.0.2",
+    "@types/prismjs": "^1.26.5",
     "gray-matter": "^4.0.3",
+    "marked": "^16.0.0",
+    "prismjs": "^1.30.0",
     "simple-git": "^3.28.0"
   }
 }
