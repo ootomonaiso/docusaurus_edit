@@ -239,6 +239,31 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		}
 	});
 
+	const deleteDocCommand = vscode.commands.registerCommand('docusaurus-editor.deleteDoc', async (item: any) => {
+		if (item && item.filePath) {
+			const fileName = path.basename(item.filePath);
+			const result = await vscode.window.showWarningMessage(
+				`本当に "${fileName}" を削除しますか？この操作は元に戻せません。`,
+				{ modal: true },
+				'削除',
+				'キャンセル'
+			);
+			
+			if (result === '削除') {
+				try {
+					await vscode.workspace.fs.delete(vscode.Uri.file(item.filePath));
+					vscode.window.showInformationMessage(`ドキュメント "${fileName}" を削除しました`);
+					if (treeDataProvider) {
+						treeDataProvider.refresh();
+					}
+				} catch (error) {
+					console.error('Delete document error:', error);
+					vscode.window.showErrorMessage(`ドキュメントの削除に失敗しました: ${error}`);
+				}
+			}
+		}
+	});
+
 	const gitCommitCommand = vscode.commands.registerCommand('docusaurus-editor.gitCommit', async () => {
 		await gitHandler.commitAndPush();
 	});
@@ -261,7 +286,25 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 
 	const deleteCategoryCommand = vscode.commands.registerCommand('docusaurus-editor.deleteCategory', async (item: any) => {
 		if (item && item.filePath) {
-			await categoryHandler.deleteCategory(item.filePath);
+			const folderName = path.basename(item.filePath);
+			const result = await vscode.window.showWarningMessage(
+				`本当にカテゴリ "${folderName}" を削除しますか？\nフォルダ内のすべてのファイルも削除されます。この操作は元に戻せません。`,
+				{ modal: true },
+				'削除',
+				'キャンセル'
+			);
+			
+			if (result === '削除') {
+				try {
+					await categoryHandler.deleteCategory(item.filePath);
+					if (treeDataProvider) {
+						treeDataProvider.refresh();
+					}
+				} catch (error) {
+					console.error('Delete category error:', error);
+					vscode.window.showErrorMessage(`カテゴリの削除に失敗しました: ${error}`);
+				}
+			}
 		}
 	});
 
@@ -639,6 +682,50 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		}
 	});
 
+	// Add folder deletion command
+	const deleteFolderCommand = vscode.commands.registerCommand('docusaurus-editor.deleteFolder', async (uri: vscode.Uri) => {
+		if (uri && uri.fsPath) {
+			const folderPath = uri.fsPath;
+			const confirmation = await vscode.window.showWarningMessage(
+				`⚠️ フォルダ "${path.basename(folderPath)}" を削除しますか？この操作は元に戻せません。`,
+				{ modal: true },
+				'🗑️ はい、削除する'
+			);
+
+			if (confirmation === '🗑️ はい、削除する') {
+				try {
+					fs.rmdirSync(folderPath, { recursive: true });
+					vscode.window.showInformationMessage(`✅ フォルダ "${path.basename(folderPath)}" を削除しました`);
+					treeDataProvider?.refresh();
+				} catch (error) {
+					vscode.window.showErrorMessage(`❌ フォルダの削除に失敗しました: ${error}`);
+				}
+			}
+		}
+	});
+
+	// Add file deletion command
+	const deleteFileCommand = vscode.commands.registerCommand('docusaurus-editor.deleteFile', async (uri: vscode.Uri) => {
+		if (uri && uri.fsPath) {
+			const filePath = uri.fsPath;
+			const confirmation = await vscode.window.showWarningMessage(
+				`⚠️ ファイル "${path.basename(filePath)}" を削除しますか？この操作は元に戻せません。`,
+				{ modal: true },
+				'🗑️ はい、削除する'
+			);
+
+			if (confirmation === '🗑️ はい、削除する') {
+				try {
+					fs.unlinkSync(filePath);
+					vscode.window.showInformationMessage(`✅ ファイル "${path.basename(filePath)}" を削除しました`);
+					treeDataProvider?.refresh();
+				} catch (error) {
+					vscode.window.showErrorMessage(`❌ ファイルの削除に失敗しました: ${error}`);
+				}
+			}
+		}
+	});
+
 	// Add to subscriptions
 	context.subscriptions.push(
 		...(treeView ? [treeView] : []),
@@ -647,6 +734,7 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		refreshCommand,
 		createNewDocCommand,
 		editDocCommand,
+		deleteDocCommand,
 		gitCommitCommand,
 		createPullRequestCommand,
 		createCategoryCommand,
@@ -672,7 +760,9 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		insertAdmonitionCommand,
 		insertTableCommand,
 		insertLinkCommand,
-		insertImageCommand
+		insertImageCommand,
+		deleteFolderCommand,
+		deleteFileCommand
 	);
 
 	console.log(`Docusaurus Editor initialized for: ${docusaurusRoot}`);
