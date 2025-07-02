@@ -25,8 +25,6 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState
     ) {
         try {
-            console.log(`🔨 Creating tree item for: ${docItem.label} (${docItem.type}), path: ${docItem.filePath || 'undefined'}`);
-            
             // まず、ラベルだけで初期化（最低限の表示を保証）
             super(docItem.label, collapsibleState);
             
@@ -59,8 +57,6 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
                 }
                 // Imagesフォルダや仮想フォルダはresourceUriを設定しない
             }
-            
-            console.log(`👁️ TreeItem created for ${docItem.label} with resourceUri: ${this.resourceUri ? 'set' : 'undefined'}`);
         } catch (err) {
             // エラーが発生した場合は、単純なラベルだけのTreeItemを作成
             console.error(`❌ Error creating TreeItem for ${docItem.label}:`, err);
@@ -718,7 +714,7 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
                 }
             }
         }
-        
+
         // Sort regular items by position
         items.sort((a, b) => {
             const posA = a.position || 999;

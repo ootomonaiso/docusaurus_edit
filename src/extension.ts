@@ -401,6 +401,113 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		}
 	});
 	
+	// Register image delete command
+	const deleteImageCommand = vscode.commands.registerCommand('docusaurus-editor.deleteImage', async (item: any) => {
+		// 画像削除処理
+		if (!item || !item.filePath) {
+			vscode.window.showErrorMessage('有効な画像ファイルが選択されていません');
+			return;
+		}
+
+		const fileName = path.basename(item.filePath);
+		
+		// 削除前に確認ダイアログを表示
+		const confirmation = await vscode.window.showWarningMessage(
+			`画像"${fileName}"を削除してもよろしいですか？`,
+			'はい',
+			'いいえ'
+		);
+		
+		if (confirmation !== 'はい') {
+			return;
+		}
+		
+		try {
+			// ファイル削除
+			fs.unlinkSync(item.filePath);
+			vscode.window.showInformationMessage(`画像"${fileName}"を削除しました`);
+			
+			// ツリービューを更新
+			if (treeDataProvider) {
+				treeDataProvider.refresh();
+			}
+		} catch (error) {
+			console.error('Error deleting image file:', error);
+			vscode.window.showErrorMessage(`画像の削除に失敗しました: ${error}`);
+		}
+	});
+	
+	// Register image folder delete command
+	const deleteImageFolderCommand = vscode.commands.registerCommand('docusaurus-editor.deleteImageFolder', async (item: any) => {
+		// 画像フォルダ削除処理
+		if (!item || !item.filePath) {
+			vscode.window.showErrorMessage('有効な画像フォルダが選択されていません');
+			return;
+		}
+
+		let folderPath = item.filePath;
+		const folderName = path.basename(folderPath);
+		
+		// Check if item is a DocusaurusTreeItem and has a docItem property
+		if (item.docItem && item.docItem.label) {
+			// イメージフォルダの判定方法をより柔軟に
+			const isImageFolder = /^(images|img|assets|static)\s*\(\d+\)$/.test(item.docItem.label);
+			if (isImageFolder) {
+				// Get the actual folder path from treeDataProvider
+				if (treeDataProvider) {
+					const actualPath = treeDataProvider.getImagesFolderPath(item.docItem.label);
+					if (actualPath) {
+						folderPath = actualPath;
+					}
+				}
+			}
+		}
+		
+		// フォルダ内のファイル数をチェック
+		try {
+			const files = fs.readdirSync(folderPath);
+			const fileCount = files.length;
+			
+			// 削除前に確認ダイアログを表示
+			const confirmation = await vscode.window.showWarningMessage(
+				`画像フォルダ"${folderName}"とその中の${fileCount}個のファイルを削除してもよろしいですか？`,
+				'はい',
+				'いいえ'
+			);
+			
+			if (confirmation !== 'はい') {
+				return;
+			}
+			
+			// フォルダ内のファイルをすべて削除
+			for (const file of files) {
+				const filePath = path.join(folderPath, file);
+				try {
+					if (fs.statSync(filePath).isFile()) {
+						fs.unlinkSync(filePath);
+					} else if (fs.statSync(filePath).isDirectory()) {
+						// サブフォルダがある場合は再帰的に削除
+						fs.rmdirSync(filePath, { recursive: true });
+					}
+				} catch (err) {
+					console.error(`Error deleting file ${filePath}:`, err);
+				}
+			}
+			
+			// 空になったフォルダを削除
+			fs.rmdirSync(folderPath);
+			vscode.window.showInformationMessage(`画像フォルダ"${folderName}"を削除しました`);
+			
+			// ツリービューを更新
+			if (treeDataProvider) {
+				treeDataProvider.refresh();
+			}
+		} catch (error) {
+			console.error('Error deleting image folder:', error);
+			vscode.window.showErrorMessage(`画像フォルダの削除に失敗しました: ${error}`);
+		}
+	});
+	
 	// Register Markdown template commands
 	const insertHeadingCommand = vscode.commands.registerCommand('docusaurus-editor.insertHeading', async () => {
 		await markdownTemplateProvider.insertHeading();
@@ -557,6 +664,8 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		switchToBlogCommand,
 		toggleContentTypeCommand,
 		addImageCommand,
+		deleteImageCommand,
+		deleteImageFolderCommand,
 		insertHeadingCommand,
 		insertListCommand,
 		insertCodeBlockCommand,
@@ -678,3 +787,5 @@ export function deactivate() {
 	}
 	console.log('Docusaurus Editor extension deactivated');
 }
+
+//# sourceMappingURL=extension.js.map

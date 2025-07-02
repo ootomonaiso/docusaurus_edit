@@ -282,9 +282,19 @@
           "group": "image@1"
         },
         {
+          "command": "docusaurus-editor.deleteImage",
+          "when": "view == docusaurusExplorer && viewItem == imageFile",
+          "group": "image@2"
+        },
+        {
           "command": "docusaurus-editor.addImage",
           "when": "view == docusaurusExplorer && viewItem == imagesFolder",
           "group": "image@1"
+        },
+        {
+          "command": "docusaurus-editor.deleteImageFolder",
+          "when": "view == docusaurusExplorer && viewItem == imagesFolder",
+          "group": "image@2"
         }
       ],
       "editor/title": [
