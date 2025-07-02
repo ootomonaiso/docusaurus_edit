@@ -272,13 +272,19 @@ export class FileStatsProvider implements vscode.TreeDataProvider<FileStatsTreeI
 	public getStatsForActiveEditor(): FileStats | null {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!activeEditor) {
+			console.log('📊 No active editor');
 			return null;
 		}
 
 		const document = activeEditor.document;
+		console.log('📊 Checking file:', document.fileName);
+		
 		if (!this.isMarkdownFile(document.fileName)) {
+			console.log('📊 Not a markdown file');
 			return null;
 		}
+
+		console.log('📊 Processing markdown file');
 
 		// ドキュメントの現在の内容から統計を計算
 		const content = document.getText();
@@ -289,7 +295,7 @@ export class FileStatsProvider implements vscode.TreeDataProvider<FileStatsTreeI
 		const lineCount = content.split('\n').length;
 		const readingTime = this.calculateReadingTime(contentWithoutFrontmatter, wordCount);
 
-		return {
+		const result = {
 			filePath: document.fileName,
 			fileName: path.basename(document.fileName),
 			charCount,
@@ -299,6 +305,9 @@ export class FileStatsProvider implements vscode.TreeDataProvider<FileStatsTreeI
 			lastModified: new Date(), // 現在時刻
 			fileSize: Buffer.byteLength(content, 'utf8')
 		};
+
+		console.log('📊 Calculated stats:', result);
+		return result;
 	}
 
 	// 全体統計を取得

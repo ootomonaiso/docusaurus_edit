@@ -32,6 +32,59 @@ export function activate(context: vscode.ExtensionContext) {
 		return;
 	}
 
+	// Create global status bar item (always available)
+	console.log('📊 Creating Global Status Bar Item');
+	statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+	statusBarItem.command = 'docusaurus-editor.showCurrentFileStats';
+	statusBarItem.tooltip = 'クリックで詳細統計を表示';
+	context.subscriptions.push(statusBarItem);
+
+	// Create global file stats provider (always available)
+	console.log('📊 Creating Global FileStatsProvider');
+	fileStatsProvider = new FileStatsProvider(workspaceRoot, 'docs');
+
+	// Setup global editor change listeners
+	const activeEditorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(() => {
+		console.log('👁️ Active editor changed');
+		updateStatusBarStats();
+	});
+	
+	const documentChangeDisposable = vscode.workspace.onDidChangeTextDocument(() => {
+		console.log('✏️ Document changed');
+		updateStatusBarStats();
+	});
+
+	context.subscriptions.push(activeEditorChangeDisposable, documentChangeDisposable);
+
+	// Initial status bar update
+	updateStatusBarStats();
+
+	// Register global commands
+	const globalShowCurrentFileStatsCommand = vscode.commands.registerCommand('docusaurus-editor.showCurrentFileStats', () => {
+		console.log('📊 Global showCurrentFileStats command triggered');
+		if (fileStatsProvider) {
+			const stats = fileStatsProvider.getStatsForActiveEditor();
+			if (stats) {
+				const readingTimeText = stats.readingTime < 1 
+					? `${Math.ceil(stats.readingTime * 60)}秒`
+					: `${Math.ceil(stats.readingTime)}分`;
+				
+				const message = `📊 ${stats.fileName} の統計\n` +
+					`文字数: ${stats.charCount.toLocaleString()}\n` +
+					`単語数: ${stats.wordCount.toLocaleString()}\n` +
+					`行数: ${stats.lineCount.toLocaleString()}\n` +
+					`読了時間: ${readingTimeText}\n` +
+					`ファイルサイズ: ${(stats.fileSize / 1024).toFixed(1)} KB`;
+				
+				vscode.window.showInformationMessage(message);
+			} else {
+				vscode.window.showWarningMessage('現在開いているファイルはMarkdownファイルではありません');
+			}
+		}
+	});
+
+	context.subscriptions.push(globalShowCurrentFileStatsCommand);
+
 	// Try to auto-detect Docusaurus project
 	const autoDetectedRoot = findDocusaurusRoot(workspaceRoot);
 	if (autoDetectedRoot) {
@@ -106,13 +159,6 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 
 	console.log('📊 Creating FileStatsProvider');
 	fileStatsProvider = new FileStatsProvider(docusaurusRoot, currentContentType);
-
-	// Create status bar item for current file stats
-	console.log('📊 Creating Status Bar Item');
-	statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-	statusBarItem.command = 'docusaurus-editor.showCurrentFileStats';
-	statusBarItem.tooltip = 'クリックで詳細統計を表示';
-	updateStatusBarStats();
 
 	// Create completion and preview providers
 	console.log('💬 Creating Docusaurus Completion Provider');
@@ -389,7 +435,7 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	context.subscriptions.push(
 		treeView,
 		fileStatsTreeView,
-		statusBarItem,
+		...(statusBarItem ? [statusBarItem] : []),
 		refreshCommand,
 		createNewDocCommand,
 		editDocCommand,
@@ -418,34 +464,40 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		insertImageCommand
 	);
 
-	// エディタの変更を監視してステータスバーを更新
-	const activeEditorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(() => {
-		updateStatusBarStats();
-	});
-	
-	const documentChangeDisposable = vscode.workspace.onDidChangeTextDocument(() => {
-		updateStatusBarStats();
-	});
-
-	context.subscriptions.push(activeEditorChangeDisposable, documentChangeDisposable);
-
 	console.log(`Docusaurus Editor initialized for: ${docusaurusRoot}`);
 }
 
 function updateStatusBarStats() {
-	if (!statusBarItem || !fileStatsProvider) {
+	console.log('📊 updateStatusBarStats called');
+	
+	if (!statusBarItem) {
+		console.log('❌ statusBarItem is undefined');
+		return;
+	}
+	
+	if (!fileStatsProvider) {
+		console.log('❌ fileStatsProvider is undefined');
 		return;
 	}
 
+	const activeEditor = vscode.window.activeTextEditor;
+	console.log('📝 Active editor:', activeEditor ? activeEditor.document.fileName : 'none');
+
 	const stats = fileStatsProvider.getStatsForActiveEditor();
+	console.log('📊 Stats result:', stats);
+	
 	if (stats) {
 		const readingTime = stats.readingTime < 1 
 			? `${Math.ceil(stats.readingTime * 60)}秒`
 			: `${Math.ceil(stats.readingTime)}分`;
 		
-		statusBarItem.text = `$(file-text) ${stats.charCount}文字 • ${readingTime}`;
+		const statusText = `$(file-text) ${stats.charCount}文字 • ${readingTime}`;
+		console.log('📊 Setting status bar text:', statusText);
+		
+		statusBarItem.text = statusText;
 		statusBarItem.show();
 	} else {
+		console.log('📊 No stats, hiding status bar');
 		statusBarItem.hide();
 	}
 }
