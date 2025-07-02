@@ -9,11 +9,15 @@ import { DocusaurusCompletionProvider } from './completionProvider';
 import { DocusaurusPreviewProvider } from './previewProvider';
 import { CategoryHandler } from './categoryHandler';
 import { MarkdownTemplateProvider } from './markdownTemplates';
+import { FileStatsProvider } from './fileStatsProvider';
 import * as path from 'path';
 import * as fs from 'fs';
 
 let treeDataProvider: DocusaurusTreeDataProvider | undefined;
 let treeView: vscode.TreeView<any> | undefined;
+let fileStatsProvider: FileStatsProvider | undefined;
+let fileStatsTreeView: vscode.TreeView<any> | undefined;
+let statusBarItem: vscode.StatusBarItem | undefined;
 let currentDocusaurusRoot: string | undefined;
 let currentContentType: 'docs' | 'blog' = 'docs';
 
@@ -72,6 +76,11 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		console.log('📤 Disposing existing tree view');
 		treeView.dispose();
 	}
+	
+	if (fileStatsTreeView) {
+		console.log('📤 Disposing existing file stats tree view');
+		fileStatsTreeView.dispose();
+	}
 
 	currentDocusaurusRoot = docusaurusRoot;
 
@@ -95,6 +104,16 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	console.log('📁 Creating CategoryHandler');
 	const categoryHandler = new CategoryHandler(docusaurusRoot, currentContentType);
 
+	console.log('📊 Creating FileStatsProvider');
+	fileStatsProvider = new FileStatsProvider(docusaurusRoot, currentContentType);
+
+	// Create status bar item for current file stats
+	console.log('📊 Creating Status Bar Item');
+	statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+	statusBarItem.command = 'docusaurus-editor.showCurrentFileStats';
+	statusBarItem.tooltip = 'クリックで詳細統計を表示';
+	updateStatusBarStats();
+
 	// Create completion and preview providers
 	console.log('💬 Creating Docusaurus Completion Provider');
 	const completionProvider = new DocusaurusCompletionProvider();
@@ -110,8 +129,16 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		canSelectMany: false
 	});
 
+	// Register file stats tree view
+	console.log('📊 Creating File Stats TreeView');
+	fileStatsTreeView = vscode.window.createTreeView('docusaurusFileStats', {
+		treeDataProvider: fileStatsProvider,
+		canSelectMany: false
+	});
+
 	// Set initial tree view title
 	treeView.title = `📚 Docs Explorer`;
+	fileStatsTreeView.title = `📊 ファイル統計`;
 
 	console.log('✅ TreeView created successfully');
 
@@ -157,6 +184,51 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	const deleteCategoryCommand = vscode.commands.registerCommand('docusaurus-editor.deleteCategory', async (item: any) => {
 		if (item && item.filePath) {
 			await categoryHandler.deleteCategory(item.filePath);
+		}
+	});
+
+	// Register file stats commands
+	const refreshStatsCommand = vscode.commands.registerCommand('docusaurus-editor.refreshFileStats', () => {
+		if (fileStatsProvider) {
+			fileStatsProvider.refresh();
+			vscode.window.showInformationMessage('ファイル統計を更新しました');
+		}
+	});
+
+	const showOverallStatsCommand = vscode.commands.registerCommand('docusaurus-editor.showOverallStats', () => {
+		if (fileStatsProvider) {
+			const stats = fileStatsProvider.getOverallStats();
+			const message = `📊 全体統計\n` +
+				`ファイル数: ${stats.totalFiles}\n` +
+				`総文字数: ${stats.totalCharacters.toLocaleString()}\n` +
+				`総単語数: ${stats.totalWords.toLocaleString()}\n` +
+				`総読了時間: ${Math.ceil(stats.totalReadingTime)}分\n` +
+				`平均読了時間: ${Math.ceil(stats.averageReadingTime)}分`;
+			
+			vscode.window.showInformationMessage(message);
+		}
+	});
+
+	const showCurrentFileStatsCommand = vscode.commands.registerCommand('docusaurus-editor.showCurrentFileStats', () => {
+		if (fileStatsProvider) {
+			// アクティブエディタの統計をリアルタイムで取得
+			const stats = fileStatsProvider.getStatsForActiveEditor();
+			if (stats) {
+				const readingTimeText = stats.readingTime < 1 
+					? `${Math.ceil(stats.readingTime * 60)}秒`
+					: `${Math.ceil(stats.readingTime)}分`;
+				
+				const message = `📊 ${stats.fileName} の統計\n` +
+					`文字数: ${stats.charCount.toLocaleString()}\n` +
+					`単語数: ${stats.wordCount.toLocaleString()}\n` +
+					`行数: ${stats.lineCount.toLocaleString()}\n` +
+					`読了時間: ${readingTimeText}\n` +
+					`ファイルサイズ: ${(stats.fileSize / 1024).toFixed(1)} KB`;
+				
+				vscode.window.showInformationMessage(message);
+			} else {
+				vscode.window.showWarningMessage('現在開いているファイルはMarkdownファイルではありません');
+			}
 		}
 	});
 
@@ -273,6 +345,9 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 			treeDataProvider.refresh();
 			categoryHandler.setContentType('docs');
 			newFileHandler.setContentType('docs');
+			if (fileStatsProvider) {
+				fileStatsProvider.setContentType('docs');
+			}
 			treeView.title = `📚 Docs Explorer`;
 			vscode.window.showInformationMessage('Switched to Docs view');
 		}
@@ -285,6 +360,9 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 			treeDataProvider.refresh();
 			categoryHandler.setContentType('blog');
 			newFileHandler.setContentType('blog');
+			if (fileStatsProvider) {
+				fileStatsProvider.setContentType('blog');
+			}
 			treeView.title = `📝 Blog Explorer`;
 			vscode.window.showInformationMessage('Switched to Blog view');
 		}
@@ -297,6 +375,9 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 			treeDataProvider.refresh();
 			categoryHandler.setContentType(currentContentType);
 			newFileHandler.setContentType(currentContentType);
+			if (fileStatsProvider) {
+				fileStatsProvider.setContentType(currentContentType);
+			}
 			const titleEmoji = currentContentType === 'docs' ? '📚' : '📝';
 			const titleText = currentContentType === 'docs' ? 'Docs' : 'Blog';
 			treeView.title = `${titleEmoji} ${titleText} Explorer`;
@@ -307,6 +388,8 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	// Add to subscriptions
 	context.subscriptions.push(
 		treeView,
+		fileStatsTreeView,
+		statusBarItem,
 		refreshCommand,
 		createNewDocCommand,
 		editDocCommand,
@@ -315,6 +398,9 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		createCategoryCommand,
 		editCategoryCommand,
 		deleteCategoryCommand,
+		refreshStatsCommand,
+		showOverallStatsCommand,
+		showCurrentFileStatsCommand,
 		markdownCompletionProvider,
 		mdxCompletionProvider,
 		previewProviderRegistration,
@@ -332,7 +418,36 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		insertImageCommand
 	);
 
+	// エディタの変更を監視してステータスバーを更新
+	const activeEditorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(() => {
+		updateStatusBarStats();
+	});
+	
+	const documentChangeDisposable = vscode.workspace.onDidChangeTextDocument(() => {
+		updateStatusBarStats();
+	});
+
+	context.subscriptions.push(activeEditorChangeDisposable, documentChangeDisposable);
+
 	console.log(`Docusaurus Editor initialized for: ${docusaurusRoot}`);
+}
+
+function updateStatusBarStats() {
+	if (!statusBarItem || !fileStatsProvider) {
+		return;
+	}
+
+	const stats = fileStatsProvider.getStatsForActiveEditor();
+	if (stats) {
+		const readingTime = stats.readingTime < 1 
+			? `${Math.ceil(stats.readingTime * 60)}秒`
+			: `${Math.ceil(stats.readingTime)}分`;
+		
+		statusBarItem.text = `$(file-text) ${stats.charCount}文字 • ${readingTime}`;
+		statusBarItem.show();
+	} else {
+		statusBarItem.hide();
+	}
 }
 
 function findDocusaurusRoot(workspaceRoot: string): string | undefined {
@@ -397,6 +512,12 @@ function checkDocusaurusProject(workspaceRoot: string): boolean {
 export function deactivate() {
 	if (treeView) {
 		treeView.dispose();
+	}
+	if (fileStatsTreeView) {
+		fileStatsTreeView.dispose();
+	}
+	if (statusBarItem) {
+		statusBarItem.dispose();
 	}
 	console.log('Docusaurus Editor extension deactivated');
 }

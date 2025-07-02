@@ -44,6 +44,12 @@
           "name": "ドキュサウルスエクスプローラー",
           "when": "docusaurus.enabled",
           "icon": "$(file-directory)"
+        },
+        {
+          "id": "docusaurusFileStats",
+          "name": "ファイル統計",
+          "when": "docusaurus.enabled",
+          "icon": "$(graph)"
         }
       ]
     },
@@ -124,6 +130,21 @@
         "icon": "$(arrow-swap)"
       },
       {
+        "command": "docusaurus-editor.refreshFileStats",
+        "title": "ファイル統計を更新",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "docusaurus-editor.showOverallStats",
+        "title": "全体統計を表示",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "docusaurus-editor.showCurrentFileStats",
+        "title": "現在のファイル統計を表示",
+        "icon": "$(info)"
+      },
+      {
         "command": "docusaurus-editor.insertHeading",
         "title": "見出しを挿入",
         "icon": "$(symbol-text)"
@@ -198,9 +219,19 @@
           "group": "navigation@4"
         },
         {
-          "command": "docusaurus-editor.showStats",
-          "when": "view == docusaurusExplorer",
-          "group": "navigation@5"
+          "command": "docusaurus-editor.refreshFileStats",
+          "when": "view == docusaurusFileStats",
+          "group": "navigation@1"
+        },
+        {
+          "command": "docusaurus-editor.showOverallStats",
+          "when": "view == docusaurusFileStats",
+          "group": "navigation@2"
+        },
+        {
+          "command": "docusaurus-editor.showCurrentFileStats",
+          "when": "view == docusaurusFileStats",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
