@@ -45,12 +45,6 @@
           "name": "ドキュサウルスエクスプローラー",
           "when": "docusaurus.enabled",
           "icon": "$(file-directory)"
-        },
-        {
-          "id": "docusaurusFileStats",
-          "name": "ファイル統計",
-          "when": "docusaurus.enabled",
-          "icon": "$(graph)"
         }
       ]
     },
@@ -131,6 +125,11 @@
         "icon": "$(trash)"
       },
       {
+        "command": "docusaurus-editor.deleteDoc",
+        "title": "ドキュメントを削除",
+        "icon": "$(trash)"
+      },
+      {
         "command": "docusaurus-editor.switchToDocs",
         "title": "ドキュメントビューに切り替え",
         "icon": "$(book)"
@@ -144,21 +143,6 @@
         "command": "docusaurus-editor.toggleContentType",
         "title": "ドキュメント/ブログ切り替え",
         "icon": "$(arrow-swap)"
-      },
-      {
-        "command": "docusaurus-editor.refreshFileStats",
-        "title": "ファイル統計を更新",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "docusaurus-editor.showOverallStats",
-        "title": "全体統計を表示",
-        "icon": "$(graph)"
-      },
-      {
-        "command": "docusaurus-editor.showCurrentFileStats",
-        "title": "現在のファイル統計を表示",
-        "icon": "$(info)"
       },
       {
         "command": "docusaurus-editor.insertHeading",
@@ -194,11 +178,6 @@
         "command": "docusaurus-editor.insertImage",
         "title": "画像を挿入",
         "icon": "$(file-media)"
-      },
-      {
-        "command": "docusaurus-editor.showStats",
-        "title": "📊 統計情報を表示",
-        "icon": "$(graph)"
       }
     ],
     "submenus": [
@@ -233,21 +212,6 @@
           "command": "docusaurus-editor.createCategory",
           "when": "view == docusaurusExplorer",
           "group": "navigation@4"
-        },
-        {
-          "command": "docusaurus-editor.refreshFileStats",
-          "when": "view == docusaurusFileStats",
-          "group": "navigation@1"
-        },
-        {
-          "command": "docusaurus-editor.showOverallStats",
-          "when": "view == docusaurusFileStats",
-          "group": "navigation@2"
-        },
-        {
-          "command": "docusaurus-editor.showCurrentFileStats",
-          "when": "view == docusaurusFileStats",
-          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -255,6 +219,11 @@
           "command": "docusaurus-editor.editDoc",
           "when": "view == docusaurusExplorer && viewItem == docFile",
           "group": "edit@1"
+        },
+        {
+          "command": "docusaurus-editor.deleteDoc",
+          "when": "view == docusaurusExplorer && viewItem == docFile",
+          "group": "edit@2"
         },
         {
           "command": "docusaurus-editor.createNewDoc",

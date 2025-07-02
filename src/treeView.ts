@@ -30,14 +30,14 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
             
             // 実際のファイルパスが存在する場合はresourceUriを設定
             if (docItem.filePath && fs.existsSync(docItem.filePath)) {
-                if ((docItem.type === 'file' || docItem.type === 'image')) {
-                    // ファイルの場合はresourceUriを設定
-                    this.resourceUri = vscode.Uri.file(docItem.filePath);
-                    
+                if (docItem.type === 'file') {
                     // Markdownファイルの場合は拡張子なしのラベルを表示
-                    if (docItem.type === 'file') {
-                        this.label = docItem.label.replace(/\.mdx?$/, '');
-                    }
+                    this.label = docItem.label.replace(/\.mdx?$/, '');
+                    // ファイルの場合はresourceUriを設定（ただしカスタムアイコンを後で上書き）
+                    this.resourceUri = vscode.Uri.file(docItem.filePath);
+                } else if (docItem.type === 'image') {
+                    // 画像ファイルの場合もresourceUriを設定
+                    this.resourceUri = vscode.Uri.file(docItem.filePath);
                 } else if (docItem.type === 'folder' && !this.isImageFolder(docItem.label)) {
                     // 通常のフォルダの場合はresourceUriを設定
                     this.resourceUri = vscode.Uri.file(docItem.filePath);
@@ -55,7 +55,7 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
                         }
                     }
                 }
-                // Imagesフォルダや仮想フォルダはresourceUriを設定しない
+                // Imagesフォルダは仮想フォルダなのでresourceUriは設定しない
             }
         } catch (err) {
             // エラーが発生した場合は、単純なラベルだけのTreeItemを作成
@@ -75,9 +75,6 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
                 arguments: [vscode.Uri.file(docItem.filePath)]
             };
             this.contextValue = 'docFile';
-            
-            // アイコン設定（テーマアイコン優先）
-            this.iconPath = new vscode.ThemeIcon('markdown');
         } else if (docItem.type === 'image') {
             this.command = {
                 command: 'vscode.open',
@@ -85,35 +82,37 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
                 arguments: [vscode.Uri.file(docItem.filePath)]
             };
             this.contextValue = 'imageFile';
-            
-            // アイコン設定（テーマアイコン優先）
-            this.iconPath = new vscode.ThemeIcon('file-media');
         } else {
             // フォルダ処理
             if (this.isImageFolder(docItem.label)) {
                 this.contextValue = 'imagesFolder';
-                this.iconPath = new vscode.ThemeIcon('images');
-                
-                // イメージフォルダは常に仮想フォルダとして扱う
-                if (this.resourceUri) {
-                    console.log(`🖼️ Removing resourceUri from Images folder to ensure proper icon display`);
-                    this.resourceUri = undefined;
-                }
+                // イメージフォルダは仮想フォルダとして扱うためresourceUriを削除
+                this.resourceUri = undefined;
             } else {
                 // 通常のフォルダまたはカテゴリフォルダ
                 const categoryConfigPath = path.join(docItem.filePath, '_category_.json');
                 const isCategory = fs.existsSync(categoryConfigPath);
-                
                 this.contextValue = isCategory ? 'docCategory' : 'docFolder';
-                
-                // アイコン設定
-                // ファイルシステムアイコンを優先、失敗時にThemeIconにフォールバック
-                if (!this.resourceUri) {
-                    this.iconPath = isCategory 
-                        ? new vscode.ThemeIcon('folder-library') 
-                        : new vscode.ThemeIcon('folder');
-                }
             }
+        }
+        
+        // アイコンを最後に設定（resourceUriによる自動アイコンを上書き）
+        this.setCustomIcon(docItem);
+    }
+    
+    private setCustomIcon(docItem: DocItem): void {
+        if (docItem.type === 'file') {
+            // Markdownファイルのアイコン（互換性を考慮）
+            this.iconPath = new vscode.ThemeIcon('file-text');
+        } else if (docItem.type === 'image') {
+            // 画像ファイルのアイコン（互換性を考慮）
+            this.iconPath = new vscode.ThemeIcon('file-media');
+        } else if (this.isImageFolder(docItem.label)) {
+            // イメージフォルダも普通のフォルダと同じアイコン
+            this.iconPath = new vscode.ThemeIcon('folder');
+        } else {
+            // 通常のフォルダまたはカテゴリフォルダも全て同じアイコン
+            this.iconPath = new vscode.ThemeIcon('folder');
         }
     }
 }
