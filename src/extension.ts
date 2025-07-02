@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { DocusaurusTreeDataProvider } from './treeView';
+import { DocusaurusTreeDataProvider, DocusaurusTreeItem } from './treeView';
 import { DocusaurusTreeDragAndDropController } from './dragAndDrop';
 import { GitHandler } from './gitHandler';
 import { NewFileHandler } from './newFileHandler';
@@ -168,25 +168,57 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 	const previewProvider = new DocusaurusPreviewProvider(context);
 
 	// Register tree view
-	console.log('🔧 Creating TreeView');
-	treeView = vscode.window.createTreeView('docusaurusExplorer', {
-		treeDataProvider,
-		dragAndDropController: dragController,
-		canSelectMany: false
-	});
+	try {
+		console.log('🔧 Creating TreeView with provider:', treeDataProvider ? 'available' : 'undefined');
+		
+		// 追加のチェックと初期化
+		if (!treeDataProvider) {
+			console.log('⚠️ TreeDataProvider is undefined, creating a new one');
+			treeDataProvider = new DocusaurusTreeDataProvider(docusaurusRoot);
+		}
+		
+		treeView = vscode.window.createTreeView('docusaurusExplorer', {
+			treeDataProvider,
+			dragAndDropController: dragController,
+			canSelectMany: false
+		});
+		
+		console.log('✅ Main TreeView created successfully');
+	} catch (err) {
+		console.error('❌ Error creating main tree view:', err);
+		vscode.window.showErrorMessage('ドキュメントツリーの作成に失敗しました');
+	}
 
 	// Register file stats tree view
-	console.log('📊 Creating File Stats TreeView');
-	fileStatsTreeView = vscode.window.createTreeView('docusaurusFileStats', {
-		treeDataProvider: fileStatsProvider,
-		canSelectMany: false
-	});
+	try {
+		console.log('📊 Creating File Stats TreeView');
+		
+		// 追加のチェックと初期化
+		if (!fileStatsProvider) {
+			console.log('⚠️ FileStatsProvider is undefined, creating a new one');
+			fileStatsProvider = new FileStatsProvider(docusaurusRoot, currentContentType);
+		}
+		
+		fileStatsTreeView = vscode.window.createTreeView('docusaurusFileStats', {
+			treeDataProvider: fileStatsProvider,
+			canSelectMany: false
+		});
+		
+		console.log('✅ File Stats TreeView created successfully');
+	} catch (err) {
+		console.error('❌ Error creating file stats tree view:', err);
+		vscode.window.showErrorMessage('ファイル統計ツリーの作成に失敗しました');
+	}
 
 	// Set initial tree view title
-	treeView.title = `📚 Docs Explorer`;
-	fileStatsTreeView.title = `📊 ファイル統計`;
+	if (treeView) {
+		treeView.title = `📚 Docs Explorer`;
+	}
+	if (fileStatsTreeView) {
+		fileStatsTreeView.title = `📊 ファイル統計`;
+	}
 
-	console.log('✅ TreeView created successfully');
+	console.log('✅ TreeViews setup completed');
 
 	// Register commands
 	const refreshCommand = vscode.commands.registerCommand('docusaurus-editor.refreshExplorer', () => {
@@ -310,9 +342,20 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 
 		// 仮想Imagesフォルダの場合、実際のフォルダパスを取得
 		let targetFolder = item.filePath;
-		if (targetFolder.endsWith('__images__')) {
-			// 実際のフォルダパス（__images__の親フォルダ）を取得
-			targetFolder = path.dirname(targetFolder);
+		
+		// Check if item is a DocusaurusTreeItem and has a docItem property
+		if (item.docItem && item.docItem.label) {
+			// イメージフォルダの判定方法をより柔軟に
+			const isImageFolder = /^(images|img|assets|static)\s*\(\d+\)$/.test(item.docItem.label);
+			if (isImageFolder) {
+				// Get the actual folder path from treeDataProvider
+				if (treeDataProvider) {
+					const actualPath = treeDataProvider.getImagesFolderPath(item.docItem.label);
+					if (actualPath) {
+						targetFolder = actualPath;
+					}
+				}
+			}
 		}
 		
 		// ファイル選択ダイアログを表示
@@ -491,8 +534,8 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 
 	// Add to subscriptions
 	context.subscriptions.push(
-		treeView,
-		fileStatsTreeView,
+		...(treeView ? [treeView] : []),
+		...(fileStatsTreeView ? [fileStatsTreeView] : []),
 		...(statusBarItem ? [statusBarItem] : []),
 		refreshCommand,
 		createNewDocCommand,

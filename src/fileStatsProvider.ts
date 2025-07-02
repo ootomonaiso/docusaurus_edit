@@ -26,14 +26,18 @@ export class FileStatsTreeItem extends vscode.TreeItem {
 			this.contextValue = 'fileStats';
 			this.iconPath = new vscode.ThemeIcon('info');
 			this.description = this.formatStatsDescription();
-		} else {
+		} else if (stats) {
 			this.contextValue = 'file';
 			this.iconPath = new vscode.ThemeIcon('file');
 			this.command = {
 				command: 'vscode.open',
 				title: 'Open File',
-				arguments: [vscode.Uri.file(stats?.filePath || '')]
+				arguments: [vscode.Uri.file(stats.filePath)]
 			};
+		} else {
+			// ファイルが選択されていない場合
+			this.contextValue = 'noFile';
+			this.iconPath = new vscode.ThemeIcon('info');
 		}
 	}
 
@@ -124,7 +128,7 @@ export class FileStatsProvider implements vscode.TreeDataProvider<FileStatsTreeI
 			if (stats) {
 				const item = new FileStatsTreeItem(
 					stats.fileName,
-					vscode.TreeItemCollapsibleState.Collapsed,
+					vscode.TreeItemCollapsibleState.Expanded,  // デフォルトで開いた状態に
 					stats,
 					false
 				);
@@ -160,7 +164,7 @@ export class FileStatsProvider implements vscode.TreeDataProvider<FileStatsTreeI
 
 				const item = new FileStatsTreeItem(
 					stats.fileName,
-					vscode.TreeItemCollapsibleState.Collapsed,
+					vscode.TreeItemCollapsibleState.Expanded,  // デフォルトで開いた状態に
 					stats,
 					false
 				);

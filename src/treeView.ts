@@ -14,16 +14,64 @@ export interface DocItem {
 }
 
 export class DocusaurusTreeItem extends vscode.TreeItem {
+    // イメージフォルダかどうかを判定するヘルパーメソッド
+    private isImageFolder(label: string): boolean {
+        // "フォルダ名 (数字)" の形式をチェック
+        return /^(images|img|assets|static)\s*\(\d+\)$/.test(label);
+    }
+    
     constructor(
         public readonly docItem: DocItem,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState
     ) {
-        super(docItem.label, collapsibleState);
+        try {
+            console.log(`🔨 Creating tree item for: ${docItem.label} (${docItem.type}), path: ${docItem.filePath || 'undefined'}`);
+            
+            // まず、ラベルだけで初期化（最低限の表示を保証）
+            super(docItem.label, collapsibleState);
+            
+            // 実際のファイルパスが存在する場合はresourceUriを設定
+            if (docItem.filePath && fs.existsSync(docItem.filePath)) {
+                if ((docItem.type === 'file' || docItem.type === 'image')) {
+                    // ファイルの場合はresourceUriを設定
+                    this.resourceUri = vscode.Uri.file(docItem.filePath);
+                    
+                    // Markdownファイルの場合は拡張子なしのラベルを表示
+                    if (docItem.type === 'file') {
+                        this.label = docItem.label.replace(/\.mdx?$/, '');
+                    }
+                } else if (docItem.type === 'folder' && !this.isImageFolder(docItem.label)) {
+                    // 通常のフォルダの場合はresourceUriを設定
+                    this.resourceUri = vscode.Uri.file(docItem.filePath);
+                    
+                    // カテゴリフォルダの場合はカスタムラベルを使用
+                    const categoryConfigPath = path.join(docItem.filePath, '_category_.json');
+                    if (fs.existsSync(categoryConfigPath)) {
+                        try {
+                            const categoryConfig = JSON.parse(fs.readFileSync(categoryConfigPath, 'utf8'));
+                            if (categoryConfig.label) {
+                                this.label = categoryConfig.label;
+                            }
+                        } catch (err) {
+                            console.error(`Error parsing ${categoryConfigPath}:`, err);
+                        }
+                    }
+                }
+                // Imagesフォルダや仮想フォルダはresourceUriを設定しない
+            }
+            
+            console.log(`👁️ TreeItem created for ${docItem.label} with resourceUri: ${this.resourceUri ? 'set' : 'undefined'}`);
+        } catch (err) {
+            // エラーが発生した場合は、単純なラベルだけのTreeItemを作成
+            console.error(`❌ Error creating TreeItem for ${docItem.label}:`, err);
+            super(docItem.label || "Unknown Item", collapsibleState);
+        }
         
+        // ツールチップと説明を設定
         this.tooltip = docItem.title || docItem.label;
-        // Only show position for files and folders, not images
         this.description = (docItem.position && docItem.type !== 'image') ? `pos: ${docItem.position}` : '';
         
+        // コンテキスト値とコマンドをアイテムタイプに基づいて設定
         if (docItem.type === 'file') {
             this.command = {
                 command: 'vscode.open',
@@ -31,6 +79,8 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
                 arguments: [vscode.Uri.file(docItem.filePath)]
             };
             this.contextValue = 'docFile';
+            
+            // アイコン設定（テーマアイコン優先）
             this.iconPath = new vscode.ThemeIcon('markdown');
         } else if (docItem.type === 'image') {
             this.command = {
@@ -39,20 +89,34 @@ export class DocusaurusTreeItem extends vscode.TreeItem {
                 arguments: [vscode.Uri.file(docItem.filePath)]
             };
             this.contextValue = 'imageFile';
+            
+            // アイコン設定（テーマアイコン優先）
             this.iconPath = new vscode.ThemeIcon('file-media');
         } else {
-            // Check if folder is a category (has _category_.json) or Images folder
-            if (docItem.label.startsWith('Images (')) {
+            // フォルダ処理
+            if (this.isImageFolder(docItem.label)) {
                 this.contextValue = 'imagesFolder';
-                this.iconPath = new vscode.ThemeIcon('file-media');
+                this.iconPath = new vscode.ThemeIcon('images');
+                
+                // イメージフォルダは常に仮想フォルダとして扱う
+                if (this.resourceUri) {
+                    console.log(`🖼️ Removing resourceUri from Images folder to ensure proper icon display`);
+                    this.resourceUri = undefined;
+                }
             } else {
+                // 通常のフォルダまたはカテゴリフォルダ
                 const categoryConfigPath = path.join(docItem.filePath, '_category_.json');
                 const isCategory = fs.existsSync(categoryConfigPath);
                 
                 this.contextValue = isCategory ? 'docCategory' : 'docFolder';
-                this.iconPath = isCategory 
-                    ? new vscode.ThemeIcon('folder-library') 
-                    : new vscode.ThemeIcon('folder');
+                
+                // アイコン設定
+                // ファイルシステムアイコンを優先、失敗時にThemeIconにフォールバック
+                if (!this.resourceUri) {
+                    this.iconPath = isCategory 
+                        ? new vscode.ThemeIcon('folder-library') 
+                        : new vscode.ThemeIcon('folder');
+                }
             }
         }
     }
@@ -65,10 +129,22 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
     private docsPaths: string[] = [];
     private blogPaths: string[] = [];
     private currentContentType: 'docs' | 'blog' = 'docs';
+    private imagesFolderMap: Map<string, string> = new Map(); // Maps virtual folder labels to real paths
 
+    // イメージフォルダかどうかを判定するヘルパーメソッド
+    private isImageFolder(label: string): boolean {
+        // "フォルダ名 (数字)" の形式をチェック
+        return /^(images|img|assets|static)\s*\(\d+\)$/.test(label);
+    }
+    
     constructor(private workspaceRoot: string) {
         console.log('🌳 DocusaurusTreeDataProvider constructor called with:', workspaceRoot);
         this.refresh();
+    }
+
+    // Returns the actual file system path for a virtual folder
+    getImagesFolderPath(label: string): string | undefined {
+        return this.imagesFolderMap.get(label);
     }
 
     setContentType(contentType: 'docs' | 'blog'): void {
@@ -93,15 +169,18 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
         let collapsibleState = vscode.TreeItemCollapsibleState.None;
         
         if (element.type === 'folder') {
-            // Images folder should start collapsed, others expanded
-            if (element.label.startsWith('Images (')) {
+            // 画像フォルダは閉じた状態で表示、それ以外は展開
+            if (this.isImageFolder(element.label)) {
                 collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
             } else {
                 collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
             }
         }
         
-        return new DocusaurusTreeItem(element, collapsibleState);
+        // Create the tree item
+        const treeItem = new DocusaurusTreeItem(element, collapsibleState);
+        console.log(`📌 Created tree item for ${element.label}, resourceUri: ${treeItem.resourceUri ? 'set' : 'undefined'}`);
+        return treeItem;
     }
 
     getChildren(element?: DocItem): Thenable<DocItem[]> {
@@ -115,9 +194,48 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
 
         if (element) {
             // Check if this is a virtual Images folder
-            if (element.label.startsWith('Images (') && element.children) {
+            if (this.isImageFolder(element.label)) {
                 console.log('📸 Getting children for Images folder');
-                return Promise.resolve(element.children);
+                
+                // If we have children cached, return them directly
+                if (element.children) {
+                    return Promise.resolve(element.children);
+                }
+                
+                // Otherwise, try to get the real images from the folder
+                const imagesPath = element.filePath;
+                if (fs.existsSync(imagesPath) && fs.statSync(imagesPath).isDirectory()) {
+                    try {
+                        // Load images from the actual images folder
+                        const entries = fs.readdirSync(imagesPath);
+                        const imageItems: DocItem[] = [];
+                        
+                        // Common image file extensions
+                        const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp', '.ico'];
+                        
+                        for (const entry of entries) {
+                            const fullPath = path.join(imagesPath, entry);
+                            if (fs.statSync(fullPath).isFile()) {
+                                const ext = path.extname(entry).toLowerCase();
+                                if (imageExtensions.includes(ext)) {
+                                    imageItems.push({
+                                        label: entry,
+                                        type: 'image',
+                                        filePath: fullPath
+                                    });
+                                }
+                            }
+                        }
+                        
+                        // Sort images alphabetically
+                        imageItems.sort((a, b) => a.label.localeCompare(b.label));
+                        return Promise.resolve(imageItems);
+                    } catch (error) {
+                        console.error('❌ Error reading images folder:', error);
+                    }
+                }
+                
+                return Promise.resolve([]);
             }
             
             // Return children of the selected folder
@@ -128,6 +246,17 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
             console.log('🏠 Getting root items');
             const rootItems = this.getRootItems();
             console.log('🏠 Root items found:', rootItems.length);
+            
+            // 詳細ログ出力
+            if (rootItems.length === 0) {
+                console.log('⚠️ No root items found! docsPaths:', this.docsPaths);
+            } else {
+                console.log('📊 Root items details:');
+                rootItems.forEach((item, index) => {
+                    console.log(`  ${index + 1}: ${item.label} (${item.type}) - ${item.filePath}`);
+                });
+            }
+            
             return Promise.resolve(rootItems);
         }
     }
@@ -503,7 +632,9 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
     }
 
     private getDocItemsFromPath(folderPath: string): DocItem[] {
+        console.log(`🔍 Getting doc items from path: ${folderPath}`);
         if (!fs.existsSync(folderPath)) {
+            console.log(`❌ Path does not exist: ${folderPath}`);
             return [];
         }
 
@@ -587,7 +718,7 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
                 }
             }
         }
-
+        
         // Sort regular items by position
         items.sort((a, b) => {
             const posA = a.position || 999;
@@ -598,18 +729,52 @@ export class DocusaurusTreeDataProvider implements vscode.TreeDataProvider<DocIt
         // Sort image items alphabetically
         imageItems.sort((a, b) => a.label.localeCompare(b.label));
 
-        // If there are images, create an "Images" folder to contain them
+        // If there are images, check if an images folder exists already or create one
         if (imageItems.length > 0) {
             console.log(`📸 Found ${imageItems.length} image(s) in ${folderPath}`);
             
-            // Create a virtual folder for images
+            // Check for existing image folders
+            const existingImageFolders = ['images', 'img', 'assets', 'static'];
+            let foundImageFolder = false;
+            let imageFolderName = '';
+            let imageFolderPath = '';
+            
+            // Look for existing image folders
+            for (const folder of existingImageFolders) {
+                const checkPath = path.join(folderPath, folder);
+                if (fs.existsSync(checkPath) && fs.statSync(checkPath).isDirectory()) {
+                    imageFolderName = folder;
+                    imageFolderPath = checkPath;
+                    foundImageFolder = true;
+                    console.log(`📁 Found existing image folder: ${imageFolderName}`);
+                    break;
+                }
+            }
+            
+            // If no image folder exists, create a default one
+            if (!foundImageFolder) {
+                imageFolderName = 'images'; // デフォルト名
+                imageFolderPath = path.join(folderPath, imageFolderName);
+                try {
+                    fs.mkdirSync(imageFolderPath, { recursive: true });
+                    console.log(`📁 Created default images folder: ${imageFolderPath}`);
+                } catch (error) {
+                    console.error('❌ Error creating images folder:', error);
+                }
+            }
+            
+            // フォルダ名をそのまま表示（カウントを付加）
+            const imagesFolderLabel = `${imageFolderName} (${imageItems.length})`;
             const imagesFolder: DocItem = {
-                label: `Images (${imageItems.length})`,
+                label: imagesFolderLabel,
                 type: 'folder',
-                filePath: path.join(folderPath, '__images__'), // Virtual path
+                filePath: imageFolderPath,
                 position: 1000, // Place at the end
                 children: imageItems
             };
+            
+            // Store the mapping of virtual folder label to real path
+            this.imagesFolderMap.set(imagesFolderLabel, imageFolderPath);
             
             items.push(imagesFolder);
         }
