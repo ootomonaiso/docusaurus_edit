@@ -86,6 +86,16 @@
         "icon": "$(file-media)"
       },
       {
+        "command": "docusaurus-editor.deleteImage",
+        "title": "画像を削除",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "docusaurus-editor.deleteImageFolder",
+        "title": "画像フォルダを削除",
+        "icon": "$(trash)"
+      },
+      {
         "command": "docusaurus-editor.setDocusaurusRoot",
         "title": "Docusaurus ルートを設定",
         "icon": "$(folder)"
