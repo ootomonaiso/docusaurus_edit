@@ -24,7 +24,9 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm install
+      run: |
+        npm install
+        npm ci
     
     - name: Run linter
       run: npm run lint
@@ -32,10 +34,17 @@ jobs:
     - name: Compile TypeScript
       run: npm run compile
     
+    - name: Setup Xvfb
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get install -y xvfb
+        export DISPLAY=':99.0'
+        Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+        echo "DISPLAY=:99.0" >> $GITHUB_ENV
+    
     - name: Run tests
-      run: npm test
-      env:
-        DISPLAY: ':99.0'
+      if: runner.os == 'Linux'
+      run: xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" npm test
     
     # VSCEはすでに依存関係として追加されているので、グローバルインストール不要
     - name: Package extension
