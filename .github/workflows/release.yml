@@ -6,6 +6,12 @@ on:
     tags: [ 'v*' ]
   workflow_dispatch:
 
+# GitHubリリース作成のための権限を追加
+permissions:
+  contents: write
+  packages: write
+  actions: write
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
