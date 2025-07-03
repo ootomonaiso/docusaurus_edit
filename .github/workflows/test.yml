@@ -24,7 +24,10 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     
-    - name: "Install dependencies"
+    - name: "Install dependencies (for package-lock.json)"
+      run: npm install
+      
+    - name: "Clean install dependencies"
       run: npm ci
     
     - name: "Run linter"
@@ -33,17 +36,28 @@ jobs:
     - name: "Compile TypeScript"
       run: npm run compile
     
+    - name: "Setup Xvfb"
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get install -y xvfb
+        export DISPLAY=':99.0'
+        Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+        echo "DISPLAY=:99.0" >> $GITHUB_ENV
+    
     - name: "Run tests"
+      if: runner.os == 'Linux'
+      run: xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" npm test
+      
+    - name: "Run tests (non-Linux)"
+      if: runner.os != 'Linux'
       run: npm test
-      env:
-        DISPLAY: ':99.0'
     
     - name: "Upload test results"
       uses: actions/upload-artifact@v4
-      if: failure()
+      if: always()
       with:
         name: test-results-${{ matrix.node-version }}
         path: |
-          test-results.xml
+          test-results/**
           coverage/
         retention-days: 7

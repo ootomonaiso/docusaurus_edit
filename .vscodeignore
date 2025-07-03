@@ -1,5 +1,6 @@
 .vscode/**
 .vscode-test/**
+out/**
 src/**
 .gitignore
 .yarnrc
@@ -9,3 +10,39 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+.github/**
+test-results/**
+node_modules/**
+webpack.config.js
+coverage/**
+**/*.vsix
+**/*.tgz
+**/CHANGELOG.md
+**/*.log
+
+# VS Code specific files
+.vscode-test.js
+vscode-test.config.js
+
+# Build files
+.eslintignore
+.editorconfig
+.npmignore
+rollup.config.js
+tsconfig.*.json
+
+# CI/CD
+.travis.yml
+appveyor.yml
+azure-pipelines.yml
+.gitlab-ci.yml
+
+# Docs
+docs/**
+**/*.md
+!README.md
+!LICENSE
+
+# Git
+.git/**
+.gitattributes
