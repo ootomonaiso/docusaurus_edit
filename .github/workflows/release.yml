@@ -41,8 +41,7 @@ jobs:
       run: npm install -g @vscode/vsce
     
     - name: Package extension
-      run: |
-        vsce package --out docusaurus-editor-$(node -p "require('./package.json').version").vsix
+      run: npm run release
     
     - name: Upload VSIX artifact
       uses: actions/upload-artifact@v4
@@ -95,9 +94,12 @@ jobs:
         files: |
           *.vsix
     
-    # オプション: VS Code マーケットプレースに自動公開
-    # - name: Publish to VS Code Marketplace
-    #   if: steps.check_tag.outputs.tag_exists == 'false'
+    # オプション: VS Code マーケットプレースに自動公開 (タグのプッシュ時のみ)
+    - name: Publish to VS Code Marketplace
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        vsce publish --packagePath $(ls *.vsix) -p ${{ secrets.VSCODE_MARKETPLACE_TOKEN }}
+      continue-on-error: true
     #   run: vsce publish
     #   env:
     #     VSCE_PAT: ${{ secrets.VSCE_PAT }}
