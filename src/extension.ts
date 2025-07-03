@@ -568,8 +568,8 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		await markdownTemplateProvider.insertAdmonition();
 	});
 	
-	const insertTableCommand = vscode.commands.registerCommand('docusaurus-editor.insertTable', async () => {
-		await markdownTemplateProvider.insertTable();
+	const insertTabsCommand = vscode.commands.registerCommand('docusaurus-editor.insertTabs', async () => {
+		await markdownTemplateProvider.insertTabs();
 	});
 	
 	const insertLinkCommand = vscode.commands.registerCommand('docusaurus-editor.insertLink', async () => {
@@ -594,7 +594,6 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 			return;
 		}
 
-		// Create webview panel for preview
 		const panel = vscode.window.createWebviewPanel(
 			'docusaurusPreview',
 			`Preview: ${path.basename(document.fileName)}`,
@@ -610,11 +609,9 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 			}
 		);
 
-		// Generate and set webview content
 		const content = previewProvider.generateWebViewContent(document, panel.webview);
 		panel.webview.html = content;
 
-		// Update preview when document changes
 		const changeSubscription = vscode.workspace.onDidChangeTextDocument((e: vscode.TextDocumentChangeEvent) => {
 			if (e.document === document) {
 				const updatedContent = previewProvider.generateWebViewContent(document, panel.webview);
@@ -622,7 +619,6 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 			}
 		});
 
-		// Clean up when panel is disposed
 		panel.onDidDispose(() => {
 			changeSubscription.dispose();
 		});
@@ -758,7 +754,7 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		insertListCommand,
 		insertCodeBlockCommand,
 		insertAdmonitionCommand,
-		insertTableCommand,
+		insertTabsCommand,
 		insertLinkCommand,
 		insertImageCommand,
 		deleteFolderCommand,

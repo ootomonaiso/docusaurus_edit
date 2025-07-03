@@ -177,6 +177,11 @@
         "icon": "$(info)"
       },
       {
+        "command": "docusaurus-editor.insertTabs",
+        "title": "タブを挿入",
+        "icon": "$(list-selection)"
+      },
+      {
         "command": "docusaurus-editor.insertTable",
         "title": "テーブルを挿入",
         "icon": "$(table)"
@@ -324,6 +329,18 @@
           "submenu": "docusaurus.markdownInsert",
           "when": "resourceExtname == .md || resourceExtname == .mdx",
           "group": "docusaurus@2"
+        },
+        {
+          "command": "docusaurus-editor.insertAdmonition",
+          "group": "navigation"
+        },
+        {
+          "command": "docusaurus-editor.insertTabs",
+          "group": "navigation"
+        },
+        {
+          "command": "docusaurus-editor.insertCodeBlock",
+          "group": "navigation"
         }
       ],
       "docusaurus.markdownInsert": [
@@ -344,16 +361,20 @@
           "group": "advanced@1"
         },
         {
-          "command": "docusaurus-editor.insertTable",
+          "command": "docusaurus-editor.insertTabs",
           "group": "advanced@2"
         },
         {
-          "command": "docusaurus-editor.insertLink",
+          "command": "docusaurus-editor.insertTable",
           "group": "advanced@3"
         },
         {
-          "command": "docusaurus-editor.insertImage",
+          "command": "docusaurus-editor.insertLink",
           "group": "advanced@4"
+        },
+        {
+          "command": "docusaurus-editor.insertImage",
+          "group": "advanced@5"
         }
       ],
       "explorer/context": [

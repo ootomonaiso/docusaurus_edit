@@ -304,6 +304,21 @@ export class MarkdownTemplateProvider {
     }
     
     /**
+     * タブテンプレートを挿入
+     */
+    public async insertTabs() {
+        const template = `<Tabs>
+<TabItem value="tab1" label="タブ1">
+コンテンツ1
+</TabItem>
+<TabItem value="tab2" label="タブ2">
+コンテンツ2
+</TabItem>
+</Tabs>`;
+        await this.insertTextAtCursor(template);
+    }
+    
+    /**
      * カーソル位置にテキストを挿入
      */
     private async insertTextAtCursor(text: string) {
