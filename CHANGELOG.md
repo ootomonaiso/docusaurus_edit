@@ -3,6 +3,12 @@
 ## v0.1.1 (2025-07-03)
 
 ### 新機能・改善
+- feat: タブ挿入機能を追加
+- Update CHANGELOG.md for v0.1.1
+- feat: バージョンを0.0.1から0.1.1に更新
+- Update CHANGELOG.md for v0.0.1
+
+### 新機能・改善
 - feat: バージョンを0.0.1から0.1.1に更新
 - Update CHANGELOG.md for v0.0.1
 - chore: VS Code Marketplaceへの公開設定をコメントアウト
