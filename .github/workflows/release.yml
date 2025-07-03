@@ -131,10 +131,10 @@ jobs:
     
     # オプション: VS Code マーケットプレースに自動公開 (タグのプッシュ時のみ)
     # 注: マーケットプレースへの公開準備ができたら以下を使用してください
-    - name: Publish to VS Code Marketplace
-      if: startsWith(github.ref, 'refs/tags/v')
-      run: npx @vscode/vsce publish --packagePath $(ls *.vsix)
-      env:
-        VSCE_PAT: ${{ secrets.VSCODE_MARKETPLACE_TOKEN }}
-      continue-on-error: true
+    # - name: Publish to VS Code Marketplace
+    #   if: startsWith(github.ref, 'refs/tags/v')
+    #   run: npx @vscode/vsce publish --packagePath $(ls *.vsix)
+    #   env:
+    #     VSCE_PAT: ${{ secrets.VSCODE_MARKETPLACE_TOKEN }}
+    #   continue-on-error: true
     #   continue-on-error: true
