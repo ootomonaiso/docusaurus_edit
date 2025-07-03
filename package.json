@@ -394,7 +394,8 @@
     "webpack": "webpack --mode development",
     "webpack-dev": "webpack --mode development --watch",
     "release": "vsce package",
-    "release:publish": "vsce publish"
+    "release:publish": "vsce publish",
+    "changelog": "node scripts/update-changelog.js"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

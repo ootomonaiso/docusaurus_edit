@@ -34,6 +34,25 @@ jobs:
         npm install
         npm ci
     
+    - name: Update CHANGELOG
+      run: |
+        # リポジトリ情報を設定
+        git config --global user.name "GitHub Actions Bot"
+        git config --global user.email "actions@github.com"
+        
+        # CHANGELOGを更新
+        npm run changelog
+        
+        # CHANGELOGが更新されたかチェック
+        if [[ -n $(git status --porcelain CHANGELOG.md) ]]; then
+          echo "CHANGELOG.md was updated, committing changes"
+          git add CHANGELOG.md
+          git commit -m "Update CHANGELOG.md for v$(node -p "require('./package.json').version")"
+          git push
+        else
+          echo "No changes to CHANGELOG.md"
+        fi
+    
     - name: Run linter
       run: npm run lint
     
@@ -78,6 +97,26 @@ jobs:
         else
           echo "tag_exists=false" >> $GITHUB_OUTPUT
         fi
+        
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        # CHANGELOGからリリースノートを抽出
+        if [ -f "CHANGELOG.md" ]; then
+          CHANGELOG_CONTENT=$(sed -n "/## ${{ steps.get_version.outputs.version }}/,/## /p" CHANGELOG.md | sed '1d;$d')
+          if [ -n "$CHANGELOG_CONTENT" ]; then
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "Extracted release notes from CHANGELOG.md"
+          fi
+        fi
+        
+        # 最近のコミットからリリースノートを生成
+        echo "commits<<EOF" >> $GITHUB_OUTPUT
+        git log -n 10 --pretty=format:"- %s" | grep -v "Merge" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "Generated release notes from recent commits"
     
     - name: Create Release
       if: steps.check_tag.outputs.tag_exists == 'false'
@@ -85,15 +124,12 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         tag_name: ${{ steps.get_version.outputs.version }}
-        name: Release ${{ steps.get_version.outputs.version }}
+        name: Docusaurus Editor ${{ steps.get_version.outputs.version }}
         body: |
           ## Docusaurus Editor ${{ steps.get_version.outputs.version }}
           
-          ### 新機能・改善
-          - 最新の変更内容をここに記載してください
-          
-          ### バグ修正
-          - 修正されたバグをここに記載してください
+          ### 最近の変更
+          ${{ steps.release_notes.outputs.changelog || steps.release_notes.outputs.commits }}
           
           ### インストール方法
           1. リリースから `.vsix` ファイルをダウンロード
