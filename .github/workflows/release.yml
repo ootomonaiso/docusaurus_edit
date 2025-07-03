@@ -101,22 +101,8 @@ jobs:
     - name: Generate release notes
       id: release_notes
       run: |
-        # CHANGELOGからリリースノートを抽出
-        if [ -f "CHANGELOG.md" ]; then
-          CHANGELOG_CONTENT=$(sed -n "/## ${{ steps.get_version.outputs.version }}/,/## /p" CHANGELOG.md | sed '1d;$d')
-          if [ -n "$CHANGELOG_CONTENT" ]; then
-            echo "changelog<<EOF" >> $GITHUB_OUTPUT
-            echo "$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-            echo "Extracted release notes from CHANGELOG.md"
-          fi
-        fi
-        
-        # 最近のコミットからリリースノートを生成
-        echo "commits<<EOF" >> $GITHUB_OUTPUT
-        git log -n 10 --pretty=format:"- %s" | grep -v "Merge" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-        echo "Generated release notes from recent commits"
+        # Node.jsスクリプトを使用してリリースノートを生成
+        npm run release-notes ${{ steps.get_version.outputs.version }}
     
     - name: Create Release
       if: steps.check_tag.outputs.tag_exists == 'false'
@@ -128,8 +114,9 @@ jobs:
         body: |
           ## Docusaurus Editor ${{ steps.get_version.outputs.version }}
           
-          ### 最近の変更
-          ${{ steps.release_notes.outputs.changelog || steps.release_notes.outputs.commits }}
+          ${{ steps.release_notes.outputs.release_notes }}
+          
+          ${{ steps.release_notes.outputs.additional_info }}
           
           ### インストール方法
           1. リリースから `.vsix` ファイルをダウンロード

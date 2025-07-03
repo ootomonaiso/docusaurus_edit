@@ -395,6 +395,7 @@
     "webpack-dev": "webpack --mode development --watch",
     "release": "vsce package",
     "release:publish": "vsce publish",
+    "release-notes": "node scripts/generate-release-notes.js",
     "changelog": "node scripts/update-changelog.js"
   },
   "devDependencies": {
