@@ -3,6 +3,12 @@
 ## v0.0.1 (2025-07-03)
 
 ### 新機能・改善
+- chore: VS Code Marketplaceへの公開設定をコメントアウト
+- Update CHANGELOG.md for v0.0.1
+- feat: リリースノート自動生成機能を追加
+- Update CHANGELOG.md for v0.0.1
+
+### 新機能・改善
 - feat: リリースノート自動生成機能を追加
 - Update CHANGELOG.md for v0.0.1
 - feat: CHANGELOG.mdの自動ビルドテストの説明を修正
