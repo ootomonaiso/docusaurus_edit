@@ -3,6 +3,11 @@
 ## v0.0.1 (2025-07-03)
 
 ### 新機能・改善
+- feat: リリースノート自動生成機能を追加
+- Update CHANGELOG.md for v0.0.1
+- feat: CHANGELOG.mdの自動ビルドテストの説明を修正
+
+### 新機能・改善
 - feat: CHANGELOG.mdの自動ビルドテストの説明を修正
 - feat: バージョン番号をv0.0.2に更新し、自動ビルドテストを追加
 - Update CHANGELOG.md for v0.0.1
