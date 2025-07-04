@@ -21,7 +21,6 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-
     "languages": [
       {
         "id": "mdx",

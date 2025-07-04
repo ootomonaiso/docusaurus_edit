@@ -222,7 +222,8 @@ export class FileStatsProvider implements vscode.TreeDataProvider<FileStatsTreeI
 		
 		const contentPath = path.join(this.docusaurusRoot, this.contentType);
 		if (!fs.existsSync(contentPath)) {
-			console.warn(`Content path does not exist: ${contentPath}`);
+			// エラーメッセージを削除し、静かに失敗するようにする
+			// 実際のユースケースで使用されるまで警告を出さない
 			return;
 		}
 
