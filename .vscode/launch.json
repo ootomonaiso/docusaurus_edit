@@ -13,9 +13,12 @@
 				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
 			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
+				"${workspaceFolder}/dist/**/*.js"
 			],
-			"preLaunchTask": "${defaultBuildTask}"
+			"preLaunchTask": "npm: compile",
+			"env": {
+				"NODE_OPTIONS": "--no-deprecation"
+			}
 		}
 	]
 }

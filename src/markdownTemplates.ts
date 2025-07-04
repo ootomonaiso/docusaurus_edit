@@ -101,29 +101,35 @@ export class MarkdownTemplateProvider {
      */
     public async insertAdmonition() {
         const admonitionTypes = [
-            { label: '💡 情報 (info)', value: 'info', description: '一般的な情報を表示' },
-            { label: '📝 ノート (note)', value: 'note', description: '補足情報やメモ' },
-            { label: '💡 ヒント (tip)', value: 'tip', description: '役立つヒントやコツ' },
-            { label: '⚠️ 注意 (caution)', value: 'caution', description: '注意が必要な情報' },
-            { label: '⚠️ 警告 (warning)', value: 'warning', description: '重要な警告' },
-            { label: '🚨 危険 (danger)', value: 'danger', description: '危険な操作への警告' }
+            { label: '📝 note - メモ', value: 'note' },
+            { label: '🔍 tip - ヒント', value: 'tip' },
+            { label: '⚠️ warning - 警告', value: 'warning' },
+            { label: '🚫 danger - 危険', value: 'danger' },
+            { label: '📌 info - 情報', value: 'info' },
+            { label: '✅ success - 成功', value: 'success' },
+            { label: '🔧 caution - 注意', value: 'caution' }
         ];
         
         const selected = await vscode.window.showQuickPick(admonitionTypes, {
-            placeHolder: 'アドモニションの種類を選択してください'
+            placeHolder: '注釈の種類を選択してください'
         });
         
-        if (selected) {
-            const title = await vscode.window.showInputBox({
-                prompt: 'カスタムタイトル（オプション、空白で既定のタイトルを使用）',
-                placeHolder: '既定のタイトルを使用'
-            });
-            
-            const titlePart = title ? ` ${title}` : '';
-            const template = `:::${selected.value}${titlePart}\n\nここに内容を入力してください。\n\n:::`;
-            
-            await this.insertTextAtCursor(template);
+        if (!selected) {
+            return;
         }
+        
+        const title = await vscode.window.showInputBox({
+            prompt: 'タイトルを入力してください（オプション）',
+            placeHolder: '例: 注意点'
+        });
+        
+        let template = `:::${selected.value}`;
+        if (title) {
+            template += ` ${title}`;
+        }
+        template += `\n\nここに内容を入力します。\n\n:::`;
+        
+        await this.insertTextAtCursor(template);
     }
     
     /**

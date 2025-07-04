@@ -124,6 +124,13 @@ export function activate(context: vscode.ExtensionContext) {
 async function initializeExtension(context: vscode.ExtensionContext, docusaurusRoot: string) {
 	console.log('🚀 Initializing extension for:', docusaurusRoot);
 	
+	// 指定されたパスが存在するか確認
+	if (!fs.existsSync(docusaurusRoot)) {
+		console.warn(`指定されたDocusaurusルートが存在しません: ${docusaurusRoot}`);
+		vscode.window.showWarningMessage(`指定されたDocusaurusルートが存在しません: ${docusaurusRoot}`);
+		return;
+	}
+	
 	// Dispose existing tree view if any
 	if (treeView) {
 		console.log('📤 Disposing existing tree view');
@@ -330,7 +337,9 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		}
 	});
 
-	const showCurrentFileStatsCommand = vscode.commands.registerCommand('docusaurus-editor.showCurrentFileStats', () => {
+	// 注意: グローバルにコマンドが登録されているため、ここでは登録しない
+	// 代わりにローカル関数を定義して、必要な処理を実行する
+	const showCurrentFileStatsHandler = () => {
 		if (fileStatsProvider) {
 			// アクティブエディタの統計をリアルタイムで取得
 			const stats = fileStatsProvider.getStatsForActiveEditor();
@@ -351,7 +360,7 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 				vscode.window.showWarningMessage('現在開いているファイルはMarkdownファイルではありません');
 			}
 		}
-	});
+	};
 
 	// Register Docusaurus-specific providers
 	const markdownCompletionProvider = vscode.languages.registerCompletionItemProvider(
@@ -603,7 +612,7 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 				retainContextWhenHidden: true,
 				localResourceRoots: [
 					vscode.Uri.file(path.dirname(document.fileName)),
-					vscode.Uri.file(docusaurusRoot),
+					...(docusaurusRoot ? [vscode.Uri.file(docusaurusRoot)] : []),
 					...(vscode.workspace.workspaceFolders || []).map(folder => folder.uri)
 				]
 			}
@@ -738,7 +747,7 @@ async function initializeExtension(context: vscode.ExtensionContext, docusaurusR
 		deleteCategoryCommand,
 		refreshStatsCommand,
 		showOverallStatsCommand,
-		showCurrentFileStatsCommand,
+		// showCurrentFileStatsCommandはグローバルに登録済み
 		markdownCompletionProvider,
 		mdxCompletionProvider,
 		previewProviderRegistration,
