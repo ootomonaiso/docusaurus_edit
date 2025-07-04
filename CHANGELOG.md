@@ -3,6 +3,11 @@
 ## v0.1.1 (2025-07-03)
 
 ### 新機能・改善
+- feat: ビルドプロセスを改善し、Docusaurusルートの存在確認を追加
+- Update CHANGELOG.md for v0.1.1
+- feat: タブ挿入機能を追加
+
+### 新機能・改善
 - feat: タブ挿入機能を追加
 - Update CHANGELOG.md for v0.1.1
 - feat: バージョンを0.0.1から0.1.1に更新
