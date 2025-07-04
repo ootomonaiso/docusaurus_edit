@@ -2,7 +2,7 @@
   "name": "docusaurus-editor",
   "displayName": "Docusaurus Editor",
   "description": "VSCode extension for editing Docusaurus documentation with TreeView, GitHub integration, and drag-and-drop functionality",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "publisher": "docusaurus-team",
   "repository": {
     "type": "git",
